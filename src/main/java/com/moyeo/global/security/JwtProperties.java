@@ -1,0 +1,10 @@
+package com.moyeo.global.security;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "moyeo.jwt")
+public record JwtProperties(
+        String secret,
+        long accessTokenValiditySeconds
+) {
+}

@@ -6,5 +6,8 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
 
+moyeo:
+  jwt:
+    secret: local-development-jwt-secret-change-me-local-development-jwt-secret

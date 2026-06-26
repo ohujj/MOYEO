@@ -17,3 +17,6 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+moyeo:
+  jwt:
+    access-token-validity-seconds: 86400
