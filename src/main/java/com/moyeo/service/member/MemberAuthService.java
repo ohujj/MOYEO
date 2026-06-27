@@ -6,6 +6,7 @@ import com.moyeo.domain.member.SocialAccount;
 import com.moyeo.domain.member.User;
 import com.moyeo.global.error.CommonErrorCode;
 import com.moyeo.global.error.MoyeoException;
+import com.moyeo.global.security.AuthenticationErrorCode;
 import com.moyeo.repository.member.LoginAccountRepository;
 import com.moyeo.repository.member.SocialAccountRepository;
 import com.moyeo.repository.member.UserRepository;
@@ -37,7 +38,7 @@ public class MemberAuthService {
     @Transactional
     public AuthenticatedMember registerLocal(String loginId, String rawPassword, String nickname) {
         if (loginAccountRepository.existsByLoginId(loginId)) {
-            throw new MoyeoException(CommonErrorCode.INVALID_REQUEST);
+            throw new MoyeoException(AuthenticationErrorCode.DUPLICATE_LOGIN_ID);
         }
 
         User user = userRepository.save(new User(nickname));
@@ -48,10 +49,10 @@ public class MemberAuthService {
 
     public AuthenticatedMember loginLocal(String loginId, String rawPassword) {
         LoginAccount loginAccount = loginAccountRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new MoyeoException(CommonErrorCode.INVALID_REQUEST));
+                .orElseThrow(() -> new MoyeoException(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS));
 
         if (!passwordEncoder.matches(rawPassword, loginAccount.getPasswordHash())) {
-            throw new MoyeoException(CommonErrorCode.INVALID_REQUEST);
+            throw new MoyeoException(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS);
         }
 
         return AuthenticatedMember.from(loginAccount.getUser(), false);

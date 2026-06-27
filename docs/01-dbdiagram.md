@@ -23,6 +23,7 @@ Table login_accounts {
 
   indexes {
     login_id [unique, name: "uk_login_accounts_login_id"]
+    user_id [unique, name: "uk_login_accounts_user_id"]
   }
 }
 
@@ -40,8 +41,8 @@ Table social_accounts {
   }
 }
 
-Ref: login_accounts.user_id - users.id
-Ref: social_accounts.user_id > users.id
+Ref fk_login_accounts_user: login_accounts.user_id - users.id
+Ref fk_social_accounts_user: social_accounts.user_id > users.id
 ```
 
 ## Notes

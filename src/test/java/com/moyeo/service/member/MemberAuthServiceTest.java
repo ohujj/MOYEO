@@ -1,6 +1,8 @@
 package com.moyeo.service.member;
 
 import com.moyeo.domain.member.AuthProvider;
+import com.moyeo.global.error.MoyeoException;
+import com.moyeo.global.security.AuthenticationErrorCode;
 import com.moyeo.repository.member.LoginAccountRepository;
 import com.moyeo.repository.member.SocialAccountRepository;
 import org.junit.jupiter.api.Test;
@@ -46,7 +48,9 @@ class MemberAuthServiceTest {
         memberAuthService.registerLocal("moyeo", "password123!", "모여");
 
         assertThatThrownBy(() -> memberAuthService.registerLocal("moyeo", "password123!", "중복"))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOfSatisfying(MoyeoException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.DUPLICATE_LOGIN_ID)
+                );
     }
 
     @Test
@@ -64,7 +68,17 @@ class MemberAuthServiceTest {
         memberAuthService.registerLocal("moyeo", "password123!", "모여");
 
         assertThatThrownBy(() -> memberAuthService.loginLocal("moyeo", "wrong-password"))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOfSatisfying(MoyeoException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS)
+                );
+    }
+
+    @Test
+    void loginLocalRejectsUnknownLoginId() {
+        assertThatThrownBy(() -> memberAuthService.loginLocal("unknown", "password123!"))
+                .isInstanceOfSatisfying(MoyeoException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS)
+                );
     }
 
     @Test

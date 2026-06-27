@@ -82,6 +82,40 @@ class AuthControllerTest {
     }
 
     @Test
+    void signupRejectsDuplicatedLoginId() throws Exception {
+        Map<String, String> request = Map.of(
+                "loginId", "duplicate",
+                "password", "password123!",
+                "nickname", "first"
+        );
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("DUPLICATE_LOGIN_ID"));
+    }
+
+    @Test
+    void loginRejectsInvalidCredentials() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "loginId", "unknown",
+                                "password", "password123!"
+                        ))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_LOGIN_CREDENTIALS"));
+    }
+
+    @Test
     void signupValidatesRequest() throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)

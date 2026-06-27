@@ -3,6 +3,7 @@ package com.moyeo.domain.member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,7 +19,8 @@ import java.time.LocalDateTime;
 @Table(
         name = "login_accounts",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_login_accounts_login_id", columnNames = "login_id")
+                @UniqueConstraint(name = "uk_login_accounts_login_id", columnNames = "login_id"),
+                @UniqueConstraint(name = "uk_login_accounts_user_id", columnNames = "user_id")
         }
 )
 public class LoginAccount {
@@ -28,7 +30,7 @@ public class LoginAccount {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_login_accounts_user"))
     private User user;
 
     @Column(name = "login_id", nullable = false, length = 50)

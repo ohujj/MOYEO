@@ -13,6 +13,20 @@ public enum AuthenticationErrorCode implements ErrorCode {
             "authentication-required",
             "Authentication required",
             "A valid access token is required."
+    ),
+    INVALID_LOGIN_CREDENTIALS(
+            HttpStatus.UNAUTHORIZED,
+            "INVALID_LOGIN_CREDENTIALS",
+            "invalid-login-credentials",
+            "Invalid login credentials",
+            "Login ID or password is invalid."
+    ),
+    DUPLICATE_LOGIN_ID(
+            HttpStatus.CONFLICT,
+            "DUPLICATE_LOGIN_ID",
+            "duplicate-login-id",
+            "Duplicate login ID",
+            "The login ID is already in use."
     );
 
     private static final String TYPE_PREFIX = "urn:moyeo:problem:";
