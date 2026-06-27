@@ -116,6 +116,8 @@ Finalize decision
 - Use AWS EC2 as the first dev deployment target.
 - Use Amazon ECR for private Docker image storage.
 - Use GitHub Actions for build, test, image push, and EC2 deployment automation.
+- Prefer AWS Systems Manager Run Command over opening SSH to GitHub Actions runners.
+- Keep EC2 runtime secrets in a server-side `.env` file or managed secret storage instead of passing them through deployment commands.
 - Keep dev/prod secrets in GitHub Secrets or AWS-managed secret storage, not in repository files.
 - Keep zero-downtime deployment, blue/green deployment, load balancer setup, and autoscaling out of the current MVP setup.
 - Revisit RDS, HTTPS, reverse proxy, migration, rollback, and zero-downtime strategy before public launch.
