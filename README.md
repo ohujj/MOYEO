@@ -137,6 +137,12 @@ JWT_SECRET
 CORS_ALLOWED_ORIGINS
 ```
 
+Dev CORS origin example:
+
+```text
+CORS_ALLOWED_ORIGINS=https://moyeo-web.vercel.app,https://moyeo-dev.vercel.app,http://localhost:3000
+```
+
 The EC2 dev server stores runtime values in:
 
 ```text
