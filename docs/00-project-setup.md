@@ -92,12 +92,38 @@ Do not implement domain behavior until a human-defined policy exists.
 
 ## AI-assisted Development Policy
 
-- Codex assists with repetitive work and implementation.
-- Humans decide domain policy, product policy, and technical direction.
-- Codex does not create policies absent from documentation.
-- Humans review AI-generated code.
-- Work is not complete until build and tests pass.
-- Manage this workflow as AI-assisted development from a harness-engineering perspective.
+- Codex assists with repetitive implementation work inside human-defined boundaries.
+- Humans decide domain policy, product policy, technical direction, and completion criteria.
+- Codex must not create or implement policies absent from documentation.
+- Features with undecided domain policy must remain unimplemented or be left as a proposal/TODO.
+- Humans review AI-generated changes before treating them as complete.
+
+Codex may help with:
+
+- Repetitive implementation
+- Boilerplate code
+- Test drafts
+- Documentation drafts
+- Swagger/OpenAPI descriptions
+- Simple refactoring within the requested scope
+
+Codex must not do the following without explicit human direction:
+
+- Create undocumented domain policy
+- Change authentication or security policy
+- Change deployment architecture
+- Change API response rules
+- Expand the database schema beyond the requested scope
+
+AI-assisted work is complete only when:
+
+- Build succeeds.
+- Tests pass.
+- Swagger/OpenAPI update needs are checked.
+- API response and error policies are respected.
+- A human reviews the change scope and checks for policy violations.
+
+The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the current RFC 9457-based error response policy, and documented working rules.
 
 ## API Response and Error Policy
 
