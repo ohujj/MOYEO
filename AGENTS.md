@@ -23,6 +23,7 @@
 - API documentation is served through Swagger/OpenAPI.
 - Current API error handling uses RFC 9457 Problem Details as a temporary common error response base.
 - Current auth implementation supports local signup/login, Access JWT issue, current user lookup, and explicit CORS origins.
+- Current room implementation supports basic room creation, invite-code lookup, and guest participation for the first milestone.
 - Current repositories are mirrored to both:
   - `origin`: personal repository
   - `cmc`: CMC organization repository
@@ -46,6 +47,9 @@ Server-side implementation should prioritize:
 - invite code/link
 - room-level participant nickname uniqueness
 - basic room creation and lookup APIs
+
+The current implementation covers this first milestone base flow only.
+Schedule coordination, place coordination, voting, and final decision remain deferred.
 
 ## Allowed Scope
 

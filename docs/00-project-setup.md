@@ -35,6 +35,7 @@ Finalize decision
 - Common error response base
 - Member/login base entities
 - Temporary local login API and Access JWT issue flow
+- First milestone room creation, invite-code lookup, and guest participation flow
 - AWS dev deployment
 
 ## Tech Decisions
@@ -67,7 +68,7 @@ Finalize decision
 
 ### Domain Logic
 
-- Appointment-room domain logic
+- Appointment-room domain logic beyond the first milestone room/invite/guest participation base
 - Voting domain logic
 - Participant domain logic
 - Result domain logic

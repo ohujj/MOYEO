@@ -97,6 +97,32 @@ Not included yet:
 - Kakao/Apple OAuth integration
 - Guest participant authentication
 
+## Current Room APIs
+
+The current room implementation covers the first milestone base flow.
+
+- `POST /api/rooms`
+- `GET /api/rooms/invitations/{inviteCode}`
+- `POST /api/rooms/invitations/{inviteCode}/guests`
+
+Current room scope:
+
+- A logged-in user can create a room as host.
+- The server issues an invite code.
+- A public invite-code lookup returns room basic information.
+- A guest can join with nickname and password.
+- Participant nicknames are unique only inside each room.
+
+Not included yet:
+
+- Schedule coordination
+- Place coordination
+- Voting/free-poll
+- Final decision/result
+- Room list/detail tabs
+- Room edit/delete
+- Guest re-entry authentication
+
 ## Dev Deployment
 
 The dev server is deployed on AWS.
