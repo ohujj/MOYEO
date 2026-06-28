@@ -5,10 +5,12 @@ import com.moyeo.global.security.JwtTokenProvider;
 import com.moyeo.service.member.AuthenticatedMember;
 import com.moyeo.service.member.MemberAuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -108,6 +110,7 @@ public class AuthController {
             summary = "현재 사용자 조회",
             description = "`Authorization: Bearer {accessToken}` 헤더로 현재 로그인 사용자를 조회합니다."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "현재 사용자 조회 성공"),
             @ApiResponse(
@@ -121,7 +124,7 @@ public class AuthController {
                             """))
             )
     })
-    public AuthUserResponse me(@CurrentMember AuthenticatedMember member) {
+    public AuthUserResponse me(@Parameter(hidden = true) @CurrentMember AuthenticatedMember member) {
         return AuthUserResponse.from(member);
     }
 }
