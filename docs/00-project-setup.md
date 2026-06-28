@@ -141,6 +141,9 @@ The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the curr
 - Use Swagger/OpenAPI as the primary API contract reference.
 - When adding or changing APIs, keep Swagger easy to read for frontend collaboration.
 - Add operation summaries, descriptions, DTO field descriptions, and example values when they help API consumers.
+- Until authentication/authorization is hardened or replaced by a different framework-level approach, controller parameters that inject the current user through `@CurrentMember AuthenticatedMember` must be hidden from Swagger with `@Parameter(hidden = true)`.
+- For APIs that require the current user, show the Bearer token requirement in Swagger instead of exposing the internal current-user parameter.
+- If the current-user injection structure changes later and Swagger no longer exposes these internal parameters, this temporary documentation rule and related annotations may be removed.
 - Keep Notion focused on product flow, policies, decisions, and links to Swagger rather than duplicating every request/response shape.
 
 ## Authentication Policy
