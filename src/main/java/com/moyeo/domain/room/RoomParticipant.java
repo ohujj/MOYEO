@@ -15,10 +15,12 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Comment("모임 참여자")
 @Table(
         name = "room_participants",
         uniqueConstraints = {
@@ -30,27 +32,34 @@ public class RoomParticipant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("모임 참여자 ID")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false, foreignKey = @ForeignKey(name = "fk_room_participants_room"))
+    @Comment("참여한 모임 ID")
     private Room room;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_room_participants_user"))
+    @Comment("연결된 서비스 사용자 ID. 게스트는 null")
     private User user;
 
     @Column(nullable = false, length = 30)
+    @Comment("모임 안에서 표시할 닉네임")
     private String nickname;
 
     @Column(name = "password_hash", length = 100)
+    @Comment("게스트 참여 비밀번호 해시. 회원/방장은 null")
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Comment("참여자 타입: HOST/GUEST")
     private ParticipantType participantType;
 
     @Column(nullable = false)
+    @Comment("참여 생성 일시")
     private LocalDateTime createdAt;
 
     protected RoomParticipant() {

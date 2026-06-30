@@ -11,10 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDate;
 
 @Entity
+@Comment("모임 일정 투표 후보 날짜")
 @Table(
         name = "room_schedule_candidates",
         uniqueConstraints = {
@@ -28,13 +30,16 @@ public class RoomScheduleCandidate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("일정 후보 ID")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "room_id", nullable = false, foreignKey = @ForeignKey(name = "fk_room_schedule_candidates_room"))
+    @Comment("일정 후보가 속한 모임 ID")
     private Room room;
 
     @Column(name = "candidate_date", nullable = false)
+    @Comment("일정 투표 후보 날짜")
     private LocalDate candidateDate;
 
     protected RoomScheduleCandidate() {

@@ -14,10 +14,12 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Comment("소셜 로그인 제공자 계정 연결 정보")
 @Table(
         name = "social_accounts",
         uniqueConstraints = {
@@ -35,23 +37,29 @@ public class SocialAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("소셜 계정 연결 ID")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_social_accounts_user"))
+    @Comment("연결된 서비스 사용자 ID")
     private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Comment("소셜 로그인 제공자")
     private AuthProvider provider;
 
     @Column(name = "provider_user_id", nullable = false, length = 191)
+    @Comment("소셜 제공자가 발급한 사용자 식별자")
     private String providerUserId;
 
     @Column(length = 255)
+    @Comment("소셜 제공자로부터 받은 이메일")
     private String email;
 
     @Column(nullable = false)
+    @Comment("소셜 계정 연결 생성 일시")
     private LocalDateTime createdAt;
 
     protected SocialAccount() {

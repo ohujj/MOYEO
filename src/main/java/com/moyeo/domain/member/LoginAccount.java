@@ -12,10 +12,12 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.Comment;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Comment("로컬 ID/PW 로그인 계정")
 @Table(
         name = "login_accounts",
         uniqueConstraints = {
@@ -27,19 +29,24 @@ public class LoginAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Comment("로컬 로그인 계정 ID")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_login_accounts_user"))
+    @Comment("연결된 서비스 사용자 ID")
     private User user;
 
     @Column(name = "login_id", nullable = false, length = 50)
+    @Comment("로그인에 사용하는 고유 ID")
     private String loginId;
 
     @Column(name = "password_hash", nullable = false, length = 100)
+    @Comment("BCrypt로 해시한 비밀번호")
     private String passwordHash;
 
     @Column(nullable = false)
+    @Comment("로컬 로그인 계정 생성 일시")
     private LocalDateTime createdAt;
 
     protected LoginAccount() {
