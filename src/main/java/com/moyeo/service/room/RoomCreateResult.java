@@ -14,6 +14,7 @@ public record RoomCreateResult(
         String name,
         String description,
         Integer maxParticipants,
+        String planningType,
         String scheduleMode,
         LocalDateTime fixedScheduleAt,
         List<LocalDate> scheduleCandidateDates,
@@ -26,6 +27,7 @@ public record RoomCreateResult(
         LocalDateTime deadlineAt,
         String inviteCode,
         String invitePath,
+        String hostDepartureAddress,
         Long hostParticipantId
 ) {
 
@@ -39,6 +41,7 @@ public record RoomCreateResult(
                 room.getName(),
                 room.getDescription(),
                 room.getMaxParticipants(),
+                room.getPlanningType().name(),
                 room.getScheduleMode().name(),
                 room.getFixedScheduleAt(),
                 scheduleCandidates.stream().map(RoomScheduleCandidate::getCandidateDate).toList(),
@@ -51,6 +54,7 @@ public record RoomCreateResult(
                 room.getDeadlineAt(),
                 room.getInviteCode(),
                 "/rooms/invitations/" + room.getInviteCode(),
+                hostParticipant.getDepartureAddress(),
                 hostParticipant.getId()
         );
     }

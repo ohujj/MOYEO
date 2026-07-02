@@ -2,6 +2,7 @@ package com.moyeo.service.room;
 
 import com.moyeo.domain.room.PlaceMode;
 import com.moyeo.domain.room.PlaceRecommendationStrategy;
+import com.moyeo.domain.room.PlanningType;
 import com.moyeo.domain.room.ScheduleMode;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ public record CreateRoomCommand(
         String name,
         String description,
         int maxParticipants,
+        PlanningType planningType,
         ScheduleMode scheduleMode,
         LocalDateTime fixedScheduleAt,
         List<LocalDate> scheduleCandidateDates,
@@ -22,6 +24,7 @@ public record CreateRoomCommand(
         PlaceRecommendationStrategy placeRecommendationStrategy,
         String fixedPlaceName,
         String fixedPlaceAddress,
+        String hostDepartureAddress,
         int deadlineMinutes
 ) {
 }

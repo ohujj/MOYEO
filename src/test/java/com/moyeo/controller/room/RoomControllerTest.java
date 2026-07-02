@@ -59,6 +59,7 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.name").value("토요일 모임"))
                 .andExpect(jsonPath("$.description").value("같이 저녁 먹어요."))
                 .andExpect(jsonPath("$.maxParticipants").value(6))
+                .andExpect(jsonPath("$.planningType").value("SCHEDULE_AND_PLACE"))
                 .andExpect(jsonPath("$.scheduleMode").value("VOTE"))
                 .andExpect(jsonPath("$.scheduleCandidateDates[0]").value("2026-07-01"))
                 .andExpect(jsonPath("$.availableStartTime").value("09:00:00"))
@@ -68,6 +69,7 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.deadlineAt").isString())
                 .andExpect(jsonPath("$.inviteCode").isString())
                 .andExpect(jsonPath("$.invitePath").isString())
+                .andExpect(jsonPath("$.hostDepartureAddress").value("Seoul Gangnam"))
                 .andExpect(jsonPath("$.hostParticipantId").isNumber());
     }
 
@@ -105,13 +107,10 @@ class RoomControllerTest {
                 "weekend",
                 "dinner",
                 6,
-                com.moyeo.domain.room.ScheduleMode.VOTE,
-                null,
+                com.moyeo.domain.room.PlanningType.SCHEDULE_ONLY,
                 List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2)),
                 LocalTime.of(18, 30),
                 LocalTime.of(22, 0),
-                com.moyeo.domain.room.PlaceMode.RECOMMEND,
-                com.moyeo.domain.room.PlaceRecommendationStrategy.MIDDLE_POINT,
                 null,
                 null,
                 1440
@@ -134,15 +133,12 @@ class RoomControllerTest {
                 "weekend",
                 "dinner",
                 6,
-                com.moyeo.domain.room.ScheduleMode.VOTE,
-                null,
+                com.moyeo.domain.room.PlanningType.SCHEDULE_AND_PLACE,
                 List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2)),
                 LocalTime.of(18, 0),
                 LocalTime.of(22, 0),
-                com.moyeo.domain.room.PlaceMode.RECOMMEND,
                 com.moyeo.domain.room.PlaceRecommendationStrategy.MIDDLE_POINT,
-                null,
-                null,
+                "Seoul Gangnam",
                 15
         );
 
@@ -156,22 +152,19 @@ class RoomControllerTest {
     }
 
     @Test
-    void createRoomIgnoresFieldsNotMatchingSelectedModes() throws Exception {
+    void createRoomSupportsPlaceOnlyPlanning() throws Exception {
         String accessToken = signupAndGetAccessToken("roomhost13", "host13");
 
         CreateRoomRequest request = new CreateRoomRequest(
                 "weekend",
                 "dinner",
                 6,
-                com.moyeo.domain.room.ScheduleMode.NONE,
-                java.time.LocalDateTime.of(2026, 7, 4, 19, 0),
-                List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2)),
-                LocalTime.of(18, 0),
-                LocalTime.of(22, 0),
-                com.moyeo.domain.room.PlaceMode.NONE,
+                com.moyeo.domain.room.PlanningType.PLACE_ONLY,
+                null,
+                null,
+                null,
                 com.moyeo.domain.room.PlaceRecommendationStrategy.RANDOM,
-                "Gangnam",
-                "Seoul Gangnam",
+                null,
                 1440
         );
 
@@ -180,13 +173,14 @@ class RoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.planningType").value("PLACE_ONLY"))
                 .andExpect(jsonPath("$.scheduleMode").value("NONE"))
                 .andExpect(jsonPath("$.fixedScheduleAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.scheduleCandidateDates").isEmpty())
                 .andExpect(jsonPath("$.availableStartTime").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.availableEndTime").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.placeMode").value("NONE"))
-                .andExpect(jsonPath("$.placeRecommendationStrategy").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.placeMode").value("RECOMMEND"))
+                .andExpect(jsonPath("$.placeRecommendationStrategy").value("RANDOM"))
                 .andExpect(jsonPath("$.fixedPlaceName").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.fixedPlaceAddress").value(org.hamcrest.Matchers.nullValue()));
     }
@@ -199,13 +193,10 @@ class RoomControllerTest {
                 "weekend",
                 "dinner",
                 6,
-                com.moyeo.domain.room.ScheduleMode.VOTE,
-                null,
+                com.moyeo.domain.room.PlanningType.SCHEDULE_ONLY,
                 List.of(LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 1)),
                 LocalTime.of(18, 0),
                 LocalTime.of(22, 0),
-                com.moyeo.domain.room.PlaceMode.RECOMMEND,
-                com.moyeo.domain.room.PlaceRecommendationStrategy.MIDDLE_POINT,
                 null,
                 null,
                 1440
@@ -231,6 +222,7 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.roomId").isNumber())
                 .andExpect(jsonPath("$.name").value("토요일 모임"))
                 .andExpect(jsonPath("$.maxParticipants").value(6))
+                .andExpect(jsonPath("$.planningType").value("SCHEDULE_AND_PLACE"))
                 .andExpect(jsonPath("$.scheduleMode").value("VOTE"))
                 .andExpect(jsonPath("$.scheduleCandidateDates[0]").value("2026-07-01"))
                 .andExpect(jsonPath("$.placeMode").value("RECOMMEND"))
@@ -400,15 +392,12 @@ class RoomControllerTest {
                 "토요일 모임",
                 "같이 저녁 먹어요.",
                 maxParticipants,
-                com.moyeo.domain.room.ScheduleMode.VOTE,
-                null,
+                com.moyeo.domain.room.PlanningType.SCHEDULE_AND_PLACE,
                 List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2)),
                 LocalTime.of(9, 0),
                 LocalTime.of(18, 0),
-                com.moyeo.domain.room.PlaceMode.RECOMMEND,
                 com.moyeo.domain.room.PlaceRecommendationStrategy.MIDDLE_POINT,
-                null,
-                null,
+                "Seoul Gangnam",
                 1440
         );
     }
@@ -418,13 +407,10 @@ class RoomControllerTest {
                 "",
                 "x".repeat(101),
                 1,
-                com.moyeo.domain.room.ScheduleMode.VOTE,
-                null,
+                com.moyeo.domain.room.PlanningType.SCHEDULE_AND_PLACE,
                 List.of(),
                 LocalTime.of(18, 0),
                 LocalTime.of(9, 0),
-                com.moyeo.domain.room.PlaceMode.RECOMMEND,
-                null,
                 null,
                 null,
                 0

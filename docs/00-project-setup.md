@@ -141,6 +141,7 @@ The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the curr
 
 - Use Swagger/OpenAPI as the primary API contract reference.
 - When adding or changing APIs, keep Swagger easy to read for frontend collaboration.
+- Swagger/OpenAPI의 summary, description, DTO 필드 설명, 응답 설명, 예시는 사용자가 별도로 요청하지 않는 한 한글로 작성한다.
 - Add operation summaries, descriptions, DTO field descriptions, and example values when they help API consumers.
 - For enum or code-like fields, document the allowed values and their meanings.
 - For mode-dependent fields, document when each field is required, nullable, ignored, or returned as an empty list.
@@ -169,7 +170,7 @@ The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the curr
 - Room creation is selected by `planningType`: `SCHEDULE_ONLY`, `PLACE_ONLY`, or `SCHEDULE_AND_PLACE`.
 - Schedule mode is currently stored as `VOTE`, `FIXED`, or `NONE`, but current room creation derives it from `planningType` and does not accept fixed schedule input.
 - Place mode is currently stored as `FIXED`, `RECOMMEND`, or `NONE`, but current room creation derives it from `planningType` and does not accept fixed place input.
-- Fixed schedule/place creation remains deferred until wireframes or product policy confirm the flow.
+- Fixed schedule/place direct input is excluded from the current MVP creation flow and may be reconsidered in a later product discussion.
 - Place recommendation strategy is separated from place mode so recommendation sorting or refresh behavior can evolve later.
 - Middle-point room creation stores the host departure address on the host `room_participants` row. Actual middle-point calculation remains deferred.
 - Room creation receives `deadlineMinutes`; the server calculates and returns `deadlineAt`.

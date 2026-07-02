@@ -24,6 +24,20 @@ public record RoomInvitationResponse(
 
         @Schema(
                 description = """
+                        모임 생성 유형.
+                        <ul>
+                          <li>SCHEDULE_ONLY: 일정만 정하기</li>
+                          <li>PLACE_ONLY: 장소만 정하기</li>
+                          <li>SCHEDULE_AND_PLACE: 일정과 장소 둘 다 정하기</li>
+                        </ul>
+                        """,
+                example = "SCHEDULE_AND_PLACE",
+                allowableValues = {"SCHEDULE_ONLY", "PLACE_ONLY", "SCHEDULE_AND_PLACE"}
+        )
+        String planningType,
+
+        @Schema(
+                description = """
                         일정 설정 방식.
                         <ul>
                           <li>VOTE: 일정 투표</li>
@@ -97,6 +111,7 @@ public record RoomInvitationResponse(
                 result.name(),
                 result.description(),
                 result.maxParticipants(),
+                result.planningType(),
                 result.scheduleMode(),
                 result.fixedScheduleAt(),
                 result.scheduleCandidateDates(),

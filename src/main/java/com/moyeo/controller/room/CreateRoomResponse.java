@@ -24,6 +24,20 @@ public record CreateRoomResponse(
 
         @Schema(
                 description = """
+                        모임 생성 유형.
+                        <ul>
+                          <li>SCHEDULE_ONLY: 일정만 정하기</li>
+                          <li>PLACE_ONLY: 장소만 정하기</li>
+                          <li>SCHEDULE_AND_PLACE: 일정과 장소 둘 다 정하기</li>
+                        </ul>
+                        """,
+                example = "SCHEDULE_AND_PLACE",
+                allowableValues = {"SCHEDULE_ONLY", "PLACE_ONLY", "SCHEDULE_AND_PLACE"}
+        )
+        String planningType,
+
+        @Schema(
+                description = """
                         일정 설정 방식.
                         <ul>
                           <li>VOTE: 일정 투표</li>
@@ -90,6 +104,9 @@ public record CreateRoomResponse(
         @Schema(description = "프론트에서 초대 링크를 만들 때 사용할 수 있는 경로입니다. 실제 도메인과 조합해서 공유 링크를 만들 수 있습니다.", example = "/rooms/invitations/ABCD234567")
         String invitePath,
 
+        @Schema(description = "방장 출발지 주소. 중간지점 추천을 선택한 생성 요청에서만 값이 있습니다.", example = "서울 강남구 테헤란로 123")
+        String hostDepartureAddress,
+
         @Schema(description = "방장을 RoomParticipant로 식별하는 ID입니다.", example = "1")
         Long hostParticipantId
 ) {
@@ -100,6 +117,7 @@ public record CreateRoomResponse(
                 result.name(),
                 result.description(),
                 result.maxParticipants(),
+                result.planningType(),
                 result.scheduleMode(),
                 result.fixedScheduleAt(),
                 result.scheduleCandidateDates(),
@@ -112,6 +130,7 @@ public record CreateRoomResponse(
                 result.deadlineAt(),
                 result.inviteCode(),
                 result.invitePath(),
+                result.hostDepartureAddress(),
                 result.hostParticipantId()
         );
     }

@@ -54,6 +54,11 @@ public class Room {
     private Integer maxParticipants;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Comment("모임 생성 유형: SCHEDULE_ONLY/PLACE_ONLY/SCHEDULE_AND_PLACE")
+    private PlanningType planningType;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Comment("일정 설정 방식: VOTE/FIXED/NONE")
     private ScheduleMode scheduleMode;
@@ -109,6 +114,7 @@ public class Room {
             String name,
             String description,
             Integer maxParticipants,
+            PlanningType planningType,
             ScheduleMode scheduleMode,
             LocalDateTime fixedScheduleAt,
             LocalTime availableStartTime,
@@ -124,6 +130,7 @@ public class Room {
         this.name = name;
         this.description = description;
         this.maxParticipants = maxParticipants;
+        this.planningType = planningType;
         this.scheduleMode = scheduleMode;
         this.fixedScheduleAt = fixedScheduleAt;
         this.availableStartTime = availableStartTime;
@@ -166,6 +173,10 @@ public class Room {
 
     public Integer getMaxParticipants() {
         return maxParticipants;
+    }
+
+    public PlanningType getPlanningType() {
+        return planningType;
     }
 
     public ScheduleMode getScheduleMode() {

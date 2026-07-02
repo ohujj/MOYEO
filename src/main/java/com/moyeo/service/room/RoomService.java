@@ -63,6 +63,7 @@ public class RoomService {
                 normalizeRequired(command.name()),
                 normalizeOptional(command.description()),
                 command.maxParticipants(),
+                command.planningType(),
                 command.scheduleMode(),
                 resolveFixedScheduleAt(command),
                 resolveAvailableStartTime(command),
@@ -78,7 +79,7 @@ public class RoomService {
         saveScheduleCandidates(savedRoom, command);
 
         RoomParticipant hostParticipant = roomParticipantRepository.saveAndFlush(
-                RoomParticipant.host(savedRoom, hostUser)
+                RoomParticipant.host(savedRoom, hostUser, normalizeOptional(command.hostDepartureAddress()))
         );
 
         List<RoomScheduleCandidate> scheduleCandidates = roomScheduleCandidateRepository

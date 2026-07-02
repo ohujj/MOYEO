@@ -58,6 +58,10 @@ public class RoomParticipant {
     @Comment("참여자 타입: HOST/GUEST")
     private ParticipantType participantType;
 
+    @Column(length = 255)
+    @Comment("방장 또는 참여자의 출발지 주소. 중간지점 추천에서 사용")
+    private String departureAddress;
+
     @Column(nullable = false)
     @Comment("참여 생성 일시")
     private LocalDateTime createdAt;
@@ -70,21 +74,27 @@ public class RoomParticipant {
             User user,
             String nickname,
             String passwordHash,
-            ParticipantType participantType
+            ParticipantType participantType,
+            String departureAddress
     ) {
         this.room = room;
         this.user = user;
         this.nickname = nickname;
         this.passwordHash = passwordHash;
         this.participantType = participantType;
+        this.departureAddress = departureAddress;
     }
 
     public static RoomParticipant host(Room room, User user) {
-        return new RoomParticipant(room, user, user.getNickname(), null, ParticipantType.HOST);
+        return host(room, user, null);
+    }
+
+    public static RoomParticipant host(Room room, User user, String departureAddress) {
+        return new RoomParticipant(room, user, user.getNickname(), null, ParticipantType.HOST, departureAddress);
     }
 
     public static RoomParticipant guest(Room room, String nickname, String passwordHash) {
-        return new RoomParticipant(room, null, nickname, passwordHash, ParticipantType.GUEST);
+        return new RoomParticipant(room, null, nickname, passwordHash, ParticipantType.GUEST, null);
     }
 
     @PrePersist
@@ -114,5 +124,9 @@ public class RoomParticipant {
 
     public ParticipantType getParticipantType() {
         return participantType;
+    }
+
+    public String getDepartureAddress() {
+        return departureAddress;
     }
 }
