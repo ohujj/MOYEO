@@ -65,7 +65,8 @@ If a requested behavior needs missing domain policy, leave a TODO/proposal inste
 
 ## Git Rules
 
-- Write commit messages in Korean unless the user explicitly requests another language.
+- Use an English conventional commit prefix such as `feat:`, `fix:`, `docs:`, `chore:`, or `test:`.
+- Write the commit subject/body content in Korean unless the user explicitly requests another language.
 
 ## Verification Before Completion
 
