@@ -110,7 +110,7 @@ Current room scope:
 - A logged-in user can create a room as host.
 - Room creation for the first MVP accepts the first creation flow settings in one request.
 - The server issues an invite code.
-- A public invite-code lookup returns room basic information.
+- INV-01 invite entry uses public invite-code lookup and returns room basic information plus participation availability status.
 - A guest can join with nickname and password.
 - Guest join does not accept departure address, coordinates, or transportation mode yet.
 - Participant nicknames are unique only inside each room.
@@ -125,6 +125,8 @@ Current room scope:
 - Place recommendation strategy is fixed after room creation in the first MVP.
 - The next participation milestone should collect schedule availability first.
 - Place coordination participation is planned as a later expansion after the schedule-only participation flow is stable.
+- INV-02 schedule participation is not implemented yet.
+- INV-02 departure input and transportation mode are not implemented yet.
 
 Not included yet:
 

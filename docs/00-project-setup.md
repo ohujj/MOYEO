@@ -196,8 +196,11 @@ The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the curr
 - Guest participation checks the current participant count before saving.
 - To prevent concurrent guest joins from exceeding `maxParticipants`, guest participation may acquire a pessimistic write lock on the target room row during the join transaction.
 - Keep this lock limited to the room join path; ordinary invite-code lookup should remain read-only.
-- Invite-code lookup returns the current participation availability status for the entry screen.
+- INV-01 invite entry is currently implemented through invite-code lookup. It returns the current participation availability status for the entry screen.
 - If both the deadline and participant limit block joining, the deadline-passed status takes priority in the entry response.
+- INV-01 guest join currently creates only the participant row with nickname and password.
+- INV-02 schedule participation has not been implemented yet. The next implementation should start with schedule availability submission only after the screen policy stabilizes.
+- INV-02 departure input and transportation mode are not implemented yet because place coordination participation remains deferred.
 
 ## Deployment Policy
 
