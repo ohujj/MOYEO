@@ -158,6 +158,7 @@ The development harness includes GitHub Actions CI/CD, Swagger/OpenAPI, the curr
 - Keep local login credentials in `LoginAccount` instead of storing password data directly on `User`.
 - Keep social provider identities in `SocialAccount` using `provider + providerUserId`.
 - Use an Access JWT for local signup/login responses and protected API authentication.
+- Validate Access JWT format, signature, required headers and claims, expiration, and required JWT configuration at startup.
 - Keep the current JWT implementation minimal: no refresh token, logout, token rotation, or guest token yet.
 - Store real JWT secrets through environment variables in dev/prod.
 - Configure CORS with explicit frontend origins and update them when frontend deployment URLs are decided.

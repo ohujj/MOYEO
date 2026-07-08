@@ -60,8 +60,12 @@ public class JwtTokenProvider {
     }
 
     public JwtClaims parse(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != 3) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Invalid JWT format");
+        }
+
+        String[] parts = token.split("\\.", -1);
+        if (parts.length != 3 || parts[0].isBlank() || parts[1].isBlank() || parts[2].isBlank()) {
             throw new IllegalArgumentException("Invalid JWT format");
         }
 
@@ -74,17 +78,56 @@ public class JwtTokenProvider {
             throw new IllegalArgumentException("Invalid JWT signature");
         }
 
+        Map<String, Object> header = decodeJson(parts[0]);
+        validateHeader(header);
+
         Map<String, Object> payload = decodeJson(parts[1]);
-        long expiresAt = ((Number) payload.get("exp")).longValue();
+        long expiresAt = requireNumber(payload, "exp").longValue();
         if (Instant.now(clock).getEpochSecond() >= expiresAt) {
             throw new IllegalArgumentException("Expired JWT");
         }
 
+        requireNumber(payload, "iat");
+        String role = requireString(payload, "role");
+        if (!ROLE_USER.equals(role)) {
+            throw new IllegalArgumentException("Invalid JWT role");
+        }
+
         return new JwtClaims(
-                Long.valueOf((String) payload.get("sub")),
-                (String) payload.get("nickname"),
-                (String) payload.get("role")
+                parseUserId(requireString(payload, "sub")),
+                requireString(payload, "nickname"),
+                role
         );
+    }
+
+    private void validateHeader(Map<String, Object> header) {
+        if (!TOKEN_TYPE.equals(requireString(header, "typ")) || !ALGORITHM.equals(requireString(header, "alg"))) {
+            throw new IllegalArgumentException("Invalid JWT header");
+        }
+    }
+
+    private Long parseUserId(String subject) {
+        try {
+            return Long.valueOf(subject);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Invalid JWT subject", exception);
+        }
+    }
+
+    private String requireString(Map<String, Object> value, String key) {
+        Object claim = value.get(key);
+        if (!(claim instanceof String stringClaim) || stringClaim.isBlank()) {
+            throw new IllegalArgumentException("Invalid JWT claim");
+        }
+        return stringClaim;
+    }
+
+    private Number requireNumber(Map<String, Object> value, String key) {
+        Object claim = value.get(key);
+        if (!(claim instanceof Number numberClaim)) {
+            throw new IllegalArgumentException("Invalid JWT claim");
+        }
+        return numberClaim;
     }
 
     private String encodeJson(Map<String, Object> value) {
