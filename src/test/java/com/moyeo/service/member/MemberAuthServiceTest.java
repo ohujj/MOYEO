@@ -5,10 +5,12 @@ import com.moyeo.global.error.MoyeoException;
 import com.moyeo.global.security.AuthenticationErrorCode;
 import com.moyeo.repository.member.LoginAccountRepository;
 import com.moyeo.repository.member.SocialAccountRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +31,12 @@ class MemberAuthServiceTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void registerLocalCreatesUserAndHashedPassword() {
@@ -68,6 +76,17 @@ class MemberAuthServiceTest {
         memberAuthService.registerLocal("moyeo", "password123!", "모여");
 
         assertThatThrownBy(() -> memberAuthService.loginLocal("moyeo", "wrong-password"))
+                .isInstanceOfSatisfying(MoyeoException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS)
+                );
+    }
+
+    @Test
+    void loginLocalRejectsSoftDeletedUser() {
+        AuthenticatedMember member = memberAuthService.registerLocal("deleted", "password123!", "deleted");
+        softDeleteUser(member.userId());
+
+        assertThatThrownBy(() -> memberAuthService.loginLocal("deleted", "password123!"))
                 .isInstanceOfSatisfying(MoyeoException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS)
                 );
@@ -125,5 +144,31 @@ class MemberAuthServiceTest {
         assertThat(loggedIn.userId()).isEqualTo(registered.userId());
         assertThat(loggedIn.nickname()).isEqualTo("애플");
         assertThat(loggedIn.registered()).isFalse();
+    }
+
+    @Test
+    void loginSocialRejectsSoftDeletedUser() {
+        AuthenticatedMember registered = memberAuthService.loginSocial(
+                AuthProvider.KAKAO,
+                "deleted-kakao-123",
+                "user@example.com",
+                "deleted"
+        );
+        softDeleteUser(registered.userId());
+
+        assertThatThrownBy(() -> memberAuthService.loginSocial(
+                AuthProvider.KAKAO,
+                "deleted-kakao-123",
+                "changed@example.com",
+                "changed"
+        ))
+                .isInstanceOfSatisfying(MoyeoException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS)
+                );
+    }
+
+    private void softDeleteUser(Long userId) {
+        jdbcTemplate.update("update users set deleted_at = current_timestamp where id = ?", userId);
+        entityManager.clear();
     }
 }

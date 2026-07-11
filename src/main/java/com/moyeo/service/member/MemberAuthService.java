@@ -60,11 +60,11 @@ public class MemberAuthService {
             throw new MoyeoException(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS);
         }
 
-        return AuthenticatedMember.from(loginAccount.getUser(), false);
+        return authenticatedLoginMember(loginAccount.getUser());
     }
 
     public AuthenticatedMember findAuthenticatedMember(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new MoyeoException(CommonErrorCode.INVALID_REQUEST));
         return AuthenticatedMember.from(user, false);
     }
@@ -77,8 +77,15 @@ public class MemberAuthService {
             String fallbackNickname
     ) {
         return socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
-                .map(socialAccount -> AuthenticatedMember.from(socialAccount.getUser(), false))
+                .map(socialAccount -> authenticatedLoginMember(socialAccount.getUser()))
                 .orElseGet(() -> registerSocial(provider, providerUserId, email, fallbackNickname));
+    }
+
+    private AuthenticatedMember authenticatedLoginMember(User user) {
+        if (user.getDeletedAt() != null) {
+            throw new MoyeoException(AuthenticationErrorCode.INVALID_LOGIN_CREDENTIALS);
+        }
+        return AuthenticatedMember.from(user, false);
     }
 
     private AuthenticatedMember registerSocial(
