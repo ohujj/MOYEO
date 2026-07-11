@@ -116,6 +116,9 @@ explicitly report why no update was needed.
 
 - Before creating a commit, run a pre-commit self-review using
   `docs/ai/CODE_REVIEW.md`.
+- Before pushing, inspect configured remotes. While the personal and CMC
+  repositories are maintained together, push verified `main` changes to both
+  `origin` and `cmc` as documented in `docs/00-project-setup.md`.
 - Use an English conventional commit prefix such as `feat:`, `fix:`, `docs:`,
   `chore:`, or `test:`.
 - Write the commit subject/body content in Korean unless the user explicitly
