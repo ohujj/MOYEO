@@ -63,6 +63,13 @@ public class MemberAuthService {
         return authenticatedLoginMember(loginAccount.getUser());
     }
 
+    @Transactional
+    public void registerLocalIfMissing(String loginId, String rawPassword, String nickname) {
+        if (!loginAccountRepository.existsByLoginId(loginId)) {
+            registerLocal(loginId, rawPassword, nickname);
+        }
+    }
+
     public AuthenticatedMember findAuthenticatedMember(Long userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new MoyeoException(CommonErrorCode.INVALID_REQUEST));

@@ -87,6 +87,14 @@ The current auth implementation is a temporary MVP base.
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 
+When the `local` or `dev` profile is active, the server creates these idempotent test
+accounts and exposes one token endpoint:
+
+- `POST /api/auth/dev/tokens`
+
+The endpoint requires no request body and returns the Access JWT responses for
+`dev-user-1` and `dev-user-2`. It is not registered in the `prod` profile.
+
 Login responses include an Access JWT.
 Protected APIs use the `Authorization: Bearer {accessToken}` header.
 

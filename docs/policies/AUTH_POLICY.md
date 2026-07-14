@@ -27,6 +27,19 @@ identity remain separated through `User`, `LoginAccount`, and `SocialAccount`.
   rotation, or guest token yet.
 - Store real JWT secrets through environment variables in dev/prod.
 
+## Development Test Accounts
+
+AUTH-002: The `local` and `dev` profiles may seed a fixed, idempotent pair of
+local test accounts to support frontend development. This initialization must
+not run in the `prod` profile.
+
+- The test-account token endpoint is available only when the `local` or `dev`
+  profile is active.
+- It may issue Access JWTs without a password only for the two fixed test
+  accounts, and returns both accounts in one response.
+- The endpoint is a temporary development convenience and must not be used as
+  a production authentication mechanism.
+
 ## CORS
 
 - Configure CORS with explicit frontend origins and update them when frontend
