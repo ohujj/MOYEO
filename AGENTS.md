@@ -34,8 +34,8 @@ Before changing code or documentation:
   `docs/00-project-setup.md`
 - API and error contract: `docs/policies/API_POLICY.md`
 - Auth and security: `docs/policies/AUTH_POLICY.md`
-- Room, participant, invite, and schedule availability domain:
-  `docs/policies/ROOM_PARTICIPATION_POLICY.md`
+- Meeting, participant, invite, and schedule availability domain:
+  `docs/policies/MEETING_PARTICIPATION_POLICY.md`
 - Schema contract: `docs/01-dbdiagram.md`
 - AI code review: `docs/ai/CODE_REVIEW.md`
 
@@ -95,7 +95,7 @@ For each change, classify the touched surface before editing:
   handling, or access rules.
 - Deployment/runtime contract: Docker, GitHub Actions, profiles, environment
   variables, or external services.
-- Domain policy: room, participant, voting, place, schedule, result, or member
+- Domain policy: meeting, participant, voting, place, schedule, result, or member
   behavior not already documented.
 
 If a change touches one of these surfaces, update the matching documentation or
@@ -106,8 +106,8 @@ explicitly report why no update was needed.
 - API or error changes must follow `docs/policies/API_POLICY.md` and check
   Swagger/OpenAPI update needs.
 - Auth/security changes must follow `docs/policies/AUTH_POLICY.md`.
-- Room, participant, invite, or schedule availability changes must follow
-  `docs/policies/ROOM_PARTICIPATION_POLICY.md`.
+- Meeting, participant, invite, or schedule availability changes must follow
+  `docs/policies/MEETING_PARTICIPATION_POLICY.md`.
 - Schema changes must update `docs/01-dbdiagram.md`.
 - Deployment/runtime changes must be checked against
   `docs/00-project-setup.md` and the committed deployment files.

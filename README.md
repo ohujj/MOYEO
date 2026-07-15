@@ -105,41 +105,41 @@ Not included yet:
 - Kakao/Apple OAuth integration
 - Guest participant authentication
 
-## Current Room APIs
+## Current Meeting APIs
 
-The current room implementation covers the first milestone base flow.
+The current meeting implementation covers the first milestone base flow.
 
-- `POST /api/rooms`
-- `GET /api/rooms/invitations/{inviteCode}`
-- `POST /api/rooms/invitations/{inviteCode}/guests`
-- `PUT /api/rooms/invitations/{inviteCode}/participants/{participantId}/participation`
+- `POST /api/meetings`
+- `GET /api/meetings/invitations/{inviteCode}`
+- `POST /api/meetings/invitations/{inviteCode}/guests`
+- `PUT /api/meetings/invitations/{inviteCode}/participants/{participantId}/participation`
 
-Current room scope:
+Current meeting scope:
 
-- A logged-in user can create a room as host.
-- Room creation for the first MVP accepts the first creation flow settings in one request.
+- A logged-in user can create a meeting as host.
+- Meeting creation for the first MVP accepts the first creation flow settings in one request.
 - The server issues an invite code.
-- INV-01 invite entry uses public invite-code lookup and returns room basic information plus participation availability status.
+- INV-01 invite entry uses public invite-code lookup and returns meeting basic information plus participation availability status.
 - A guest can join with nickname and password.
 - Guest join does not accept departure address, coordinates, or transportation mode directly.
-- Participant nicknames are unique only inside each room.
+- Participant nicknames are unique only inside each meeting.
 - `deadlineAt` is calculated by the server from request `deadlineMinutes`.
 - `deadlineMinutes` is accepted in 10-minute units from 10 minutes up to 72 hours.
 - Schedule voting applies the same available time range to every selected candidate date.
 - Schedule voting time ranges are accepted in 1-hour units.
 - Guest participation is rejected after `deadlineAt`.
-- Invite-code lookup returns whether the current room can still be joined and the reason/message when joining is blocked.
+- Invite-code lookup returns whether the current meeting can still be joined and the reason/message when joining is blocked.
 - Schedule/place coordination modes are stored, but recommendation calculation is not implemented yet.
 - Middle-point creation stores the host departure name, address, coordinates, and transportation mode as the host participant snapshot.
-- Place recommendation strategy is fixed after room creation in the first MVP.
-- INV-02 participation input stores schedule availability for schedule-coordination rooms.
-- INV-02 participation input stores departure address, coordinates, and transportation mode for place-coordination rooms.
+- Place recommendation strategy is fixed after meeting creation in the first MVP.
+- INV-02 participation input stores schedule availability for schedule-coordination meetings.
+- INV-02 participation input stores departure address, coordinates, and transportation mode for place-coordination meetings.
 - A participation save request replaces the participant's previous schedule availability slots.
 - Schedule result logic, including intersection calculation and sorting by longest meeting time or earliest date, is not implemented yet.
 
 Not included yet:
 
-- Step-by-step room draft save
+- Step-by-step meeting draft save
 - Schedule coordination beyond participant availability input
 - Place coordination beyond participant departure input
 - Current-location lookup and saved departure-list management
@@ -147,8 +147,8 @@ Not included yet:
 - Store-area/place recommendation data
 - Voting/free-poll
 - Final decision/result
-- Room list/detail tabs
-- Room edit/delete
+- Meeting list/detail tabs
+- Meeting edit/delete
 - Guest re-entry authentication
 
 ## Dev Deployment

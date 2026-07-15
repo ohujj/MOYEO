@@ -41,7 +41,7 @@ Table social_accounts {
   }
 }
 
-Table rooms {
+Table meetings {
   id bigint [pk, increment, note: "모임 ID"]
   host_user_id bigint [not null, note: "모임을 만든 방장 사용자 ID"]
   name varchar(15) [not null, note: "모임 이름"]
@@ -62,21 +62,21 @@ Table rooms {
   updated_at datetime [not null, note: "모임 수정 일시"]
 
   indexes {
-    invite_code [unique, name: "uk_rooms_invite_code"]
+    invite_code [unique, name: "uk_meetings_invite_code"]
   }
 }
 
-Table room_schedule_candidates {
+Table meeting_schedule_candidates {
   id bigint [pk, increment, note: "일정 후보 ID"]
-  room_id bigint [not null, note: "일정 후보가 속한 모임 ID"]
+  meeting_id bigint [not null, note: "일정 후보가 속한 모임 ID"]
   candidate_date date [not null, note: "일정 투표 후보 날짜"]
 
   indexes {
-    (room_id, candidate_date) [unique, name: "uk_room_schedule_candidates_room_date"]
+    (meeting_id, candidate_date) [unique, name: "uk_meeting_schedule_candidates_meeting_date"]
   }
 }
 
-Table room_participant_schedule_availabilities {
+Table meeting_participant_schedule_availabilities {
   id bigint [pk, increment, note: "참여자 일정 가능 시간 ID"]
   participant_id bigint [not null, note: "일정 가능 시간을 입력한 참여자 ID"]
   schedule_candidate_id bigint [not null, note: "일정 후보 날짜 ID"]
@@ -85,13 +85,13 @@ Table room_participant_schedule_availabilities {
   created_at datetime [not null, note: "일정 가능 시간 생성 일시"]
 
   indexes {
-    (participant_id, schedule_candidate_id, start_time, end_time) [unique, name: "uk_room_participant_schedule_availabilities_slot"]
+    (participant_id, schedule_candidate_id, start_time, end_time) [unique, name: "uk_meeting_participant_schedule_availabilities_slot"]
   }
 }
 
-Table room_participants {
+Table meeting_participants {
   id bigint [pk, increment, note: "모임 참여자 ID"]
-  room_id bigint [not null, note: "참여한 모임 ID"]
+  meeting_id bigint [not null, note: "참여한 모임 ID"]
   user_id bigint [note: "연결된 서비스 사용자 ID. 게스트는 null"]
   nickname varchar(30) [not null, note: "모임 안에서 표시할 닉네임"]
   password_hash varchar(100) [note: "참여 비밀번호 해시. 방장은 null"]
@@ -104,18 +104,18 @@ Table room_participants {
   created_at datetime [not null, note: "참여 생성 일시"]
 
   indexes {
-    (room_id, user_id) [unique, name: "uk_room_participants_room_user"]
+    (meeting_id, user_id) [unique, name: "uk_meeting_participants_meeting_user"]
   }
 }
 
 Ref fk_login_accounts_user: login_accounts.user_id - users.id
 Ref fk_social_accounts_user: social_accounts.user_id > users.id
-Ref fk_rooms_host_user: rooms.host_user_id > users.id
-Ref fk_room_schedule_candidates_room: room_schedule_candidates.room_id > rooms.id
-Ref fk_room_participants_room: room_participants.room_id > rooms.id
-Ref fk_room_participants_user: room_participants.user_id > users.id
-Ref fk_room_participant_schedule_availabilities_participant: room_participant_schedule_availabilities.participant_id > room_participants.id
-Ref fk_room_participant_schedule_availabilities_candidate: room_participant_schedule_availabilities.schedule_candidate_id > room_schedule_candidates.id
+Ref fk_meetings_host_user: meetings.host_user_id > users.id
+Ref fk_meeting_schedule_candidates_meeting: meeting_schedule_candidates.meeting_id > meetings.id
+Ref fk_meeting_participants_meeting: meeting_participants.meeting_id > meetings.id
+Ref fk_meeting_participants_user: meeting_participants.user_id > users.id
+Ref fk_meeting_participant_schedule_availabilities_participant: meeting_participant_schedule_availabilities.participant_id > meeting_participants.id
+Ref fk_meeting_participant_schedule_availabilities_candidate: meeting_participant_schedule_availabilities.schedule_candidate_id > meeting_schedule_candidates.id
 ```
 
 ## Notes
@@ -124,17 +124,17 @@ Ref fk_room_participant_schedule_availabilities_candidate: room_participant_sche
 - `login_accounts` stores local login credentials separately from the user profile.
 - `social_accounts` stores provider identity for Kakao/Apple-style social login.
 - `social_accounts.provider_user_id` is the provider-issued user identifier, not CI/DI.
-- `rooms` stores the first milestone room creation and invite code base.
-- `rooms.planning_type` stores the FAB-selected creation type: `SCHEDULE_ONLY`, `PLACE_ONLY`, or `SCHEDULE_AND_PLACE`.
-- `rooms.schedule_mode` supports `VOTE`, `FIXED`, and `NONE`.
-- `rooms.place_mode` supports `FIXED`, `RECOMMEND`, and `NONE`.
-- `rooms.place_recommendation_strategy` stores the selected recommendation strategy when `place_mode` is `RECOMMEND`; the first MVP does not change it after creation.
-- `rooms.deadline_at` is calculated by the server from request `deadlineMinutes`, which is currently accepted in 10-minute units up to 72 hours.
-- `rooms.available_start_time` and `rooms.available_end_time` are shared by all schedule voting candidate dates and are currently accepted in 1-hour units.
-- `room_schedule_candidates` stores variable-length date candidates for schedule voting.
-- `room_participant_schedule_availabilities` stores INV-02 participant-selected availability slots.
-- `room_participants` stores host, logged-in member, and guest participants.
-- `room_participants.departure_name`, `departure_address`, `departure_latitude`, `departure_longitude`, and `transportation_mode` store host and participant departure snapshots for place coordination.
-- Guest `room_participants.nickname` duplication is rejected only against other guests in the same room by the join application logic; the table does not keep a general nickname unique constraint.
-- `room_participants.user_id` is unique only inside a room when a participant is linked to a service user.
-- Logged-in member participants use `users.id`; guest participants keep `room_participants.user_id` null.
+- `meetings` stores the first milestone meeting creation and invite code base.
+- `meetings.planning_type` stores the FAB-selected creation type: `SCHEDULE_ONLY`, `PLACE_ONLY`, or `SCHEDULE_AND_PLACE`.
+- `meetings.schedule_mode` supports `VOTE`, `FIXED`, and `NONE`.
+- `meetings.place_mode` supports `FIXED`, `RECOMMEND`, and `NONE`.
+- `meetings.place_recommendation_strategy` stores the selected recommendation strategy when `place_mode` is `RECOMMEND`; the first MVP does not change it after creation.
+- `meetings.deadline_at` is calculated by the server from request `deadlineMinutes`, which is currently accepted in 10-minute units up to 72 hours.
+- `meetings.available_start_time` and `meetings.available_end_time` are shared by all schedule voting candidate dates and are currently accepted in 1-hour units.
+- `meeting_schedule_candidates` stores variable-length date candidates for schedule voting.
+- `meeting_participant_schedule_availabilities` stores INV-02 participant-selected availability slots.
+- `meeting_participants` stores host, logged-in member, and guest participants.
+- `meeting_participants.departure_name`, `departure_address`, `departure_latitude`, `departure_longitude`, and `transportation_mode` store host and participant departure snapshots for place coordination.
+- Guest `meeting_participants.nickname` duplication is rejected only against other guests in the same meeting by the join application logic; the table does not keep a general nickname unique constraint.
+- `meeting_participants.user_id` is unique only inside a meeting when a participant is linked to a service user.
+- Logged-in member participants use `users.id`; guest participants keep `meeting_participants.user_id` null.

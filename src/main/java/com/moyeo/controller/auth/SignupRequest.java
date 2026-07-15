@@ -24,7 +24,7 @@ public record SignupRequest(
         @Size(min = 8, max = 72)
         String password,
 
-        @Schema(description = "회원 기본 닉네임. 전역 고유값이 아니며, 모임 안 표시 닉네임 중복은 RoomParticipant 기준으로 처리합니다.", example = "moyeo1", minLength = 1, maxLength = 30)
+        @Schema(description = "회원 기본 닉네임. 전역 고유값이 아니며, 모임 안 표시 닉네임 중복은 MeetingParticipant 기준으로 처리합니다.", example = "moyeo1", minLength = 1, maxLength = 30)
         @NotBlank
         @Size(min = 1, max = 30)
         String nickname

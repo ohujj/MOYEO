@@ -34,7 +34,7 @@ The following is a candidate core flow for later implementation, not today's
 implementation scope.
 
 ```text
-Create appointment room
+Create appointment meeting
 Share link
 Collect participant responses
 Close voting
@@ -55,7 +55,7 @@ Finalize decision
 - Common error response base
 - Member/login base entities
 - Temporary local login API and Access JWT issue flow
-- First milestone room creation, invite-code lookup, and guest participation flow
+- First milestone meeting creation, invite-code lookup, and guest participation flow
 - AWS dev deployment
 
 ## Tech Decisions
@@ -74,7 +74,7 @@ Finalize decision
 
 ### JPA
 
-- Appointment rooms, participants, votes, responses, and results are expected to
+- Appointment meetings, participants, votes, responses, and results are expected to
   have clear relationships, making a relational model and ORM a suitable
   candidate.
 - Current implemented entities are limited to member/login base structures.
@@ -99,7 +99,7 @@ Finalize decision
 
 ### Domain Logic
 
-- Appointment-room domain logic beyond the first milestone room/invite/guest
+- Appointment-meeting domain logic beyond the first milestone meeting/invite/guest
   participation base
 - Voting domain logic
 - Participant domain logic
@@ -128,8 +128,8 @@ Do not implement domain behavior until a human-defined policy exists.
 
 - API and error contract: `docs/policies/API_POLICY.md`
 - Authentication and security: `docs/policies/AUTH_POLICY.md`
-- Room and participation domain:
-  `docs/policies/ROOM_PARTICIPATION_POLICY.md`
+- Meeting and participation domain:
+  `docs/policies/MEETING_PARTICIPATION_POLICY.md`
 - AI code review: `docs/ai/CODE_REVIEW.md`
 
 ## AI-assisted Development Policy
@@ -194,6 +194,19 @@ current RFC 9457-based error response policy, and documented working rules.
   `jdbc:mysql://mysql:3306/moyeo?serverTimezone=Asia/Seoul&characterEncoding=UTF-8`.
 - Repository mirrors: push verified `main` changes to both `origin` and `cmc`
   while the personal and CMC repositories are maintained together.
+
+### Apple Sign In Preparation (2026-07-13)
+
+- The existing Moyeo App ID is enabled as the primary App ID for Sign in with
+  Apple.
+- The web Services ID is configured with the dev and production Vercel domains
+  and their `/auth/callback/apple` return URLs.
+- Apple Key material is stored only in the EC2 runtime `.env` as `APPLE_*`
+  values; the downloaded `.p8` source file was removed from the server after
+  its Base64 value was stored.
+- Apple OAuth is not implemented yet. The current Spring configuration and
+  Docker Compose file do not consume or pass through the `APPLE_*` values, so
+  this is preparation only and does not enable login by itself.
 
 ## Documentation Policy
 
