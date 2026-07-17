@@ -133,6 +133,32 @@ class MeetingControllerTest {
     }
 
     @Test
+    void createMeetingRejectsMaxParticipantsBelowMinimum() throws Exception {
+        String accessToken = signupAndGetAccessToken("meetinghost-min-participants", "host-min-participants");
+
+        mockMvc.perform(post("/api/meetings")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(defaultCreateMeetingRequest(1))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"));
+    }
+
+    @Test
+    void createMeetingRejectsMaxParticipantsAboveMaximum() throws Exception {
+        String accessToken = signupAndGetAccessToken("meetinghost-max-participants", "host-max-participants");
+
+        mockMvc.perform(post("/api/meetings")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(defaultCreateMeetingRequest(21))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"));
+    }
+
+    @Test
     void createMeetingRejectsNonHourUnitScheduleTime() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost10", "host10");
 
