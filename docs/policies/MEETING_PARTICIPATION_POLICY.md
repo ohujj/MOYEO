@@ -38,6 +38,9 @@ general best practice into domain policy.
   link-sharing flow: it returns only `meetingId`, `inviteCode`, and the existing
   `invitePath`. Meeting details, cover URL, and derived planning data are read
   through the invite-code lookup API after creation when needed.
+- The `meetup.app` domain shown in the CRT-08 design is an illustration only;
+  it is not a configured Moyeo domain or an API contract. The frontend composes
+  the final share URL from its deployed domain and `invitePath`.
 - `deadlineMinutes` is currently accepted in 10-minute units from 10 minutes up
   to 72 hours. A zero-minute deadline is not allowed.
 - `deadlineAt` is calculated from the server processing time of the final meeting
