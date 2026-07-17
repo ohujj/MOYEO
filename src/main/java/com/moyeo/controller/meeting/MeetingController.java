@@ -193,10 +193,202 @@ public class MeetingController {
                     ```
                     """
             , requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
+                    content = {
+                            @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    examples = {
+                                            @ExampleObject(
+                                                    name = "SCHEDULE_AND_PLACE",
+                                                    description = """
+                                                            **허용 `planningType`**
+                                                            - `SCHEDULE_ONLY`
+                                                            - `PLACE_ONLY`
+                                                            - `SCHEDULE_AND_PLACE` ← 이 예시
+
+                                                            **필수 입력**
+                                                            - 일정: `scheduleCandidateDates`, `availableStartTime`, `availableEndTime`
+                                                            - 장소 전략: `placeRecommendationStrategy` (`MIDDLE_POINT` 또는 `RANDOM`)
+                                                            - `MIDDLE_POINT` 선택 시: `hostDepartureName`, `hostDepartureAddress`, `hostTransportationMode` (`PUBLIC_TRANSIT` 또는 `CAR`)
+
+                                                            `scheduleMode`와 `placeMode`는 보내지 않습니다. 서버가 각각 `VOTE`, `RECOMMEND`로 설정합니다.
+                                                            """,
+                                                    value = """
+                                                    {
+                                                      "name": "토요일 저녁 모임",
+                                                      "description": "오랜만에 같이 저녁 먹어요.",
+                                                      "maxParticipants": 6,
+                                                      "planningType": "SCHEDULE_AND_PLACE",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "availableStartTime": "17:00",
+                                                      "availableEndTime": "23:00",
+                                                      "placeRecommendationStrategy": "MIDDLE_POINT",
+                                                      "hostDepartureName": "회사",
+                                                      "hostDepartureAddress": "서울 강남구 테헤란로 123",
+                                                      "hostTransportationMode": "PUBLIC_TRANSIT",
+                                                      "deadlineMinutes": 1440
+                                                    }
+                                                    """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "SCHEDULE_ONLY",
+                                                    description = """
+                                                            **허용 `planningType`**
+                                                            - `SCHEDULE_ONLY` ← 이 예시
+                                                            - `PLACE_ONLY`
+                                                            - `SCHEDULE_AND_PLACE`
+
+                                                            **필수 입력**
+                                                            - `scheduleCandidateDates`
+                                                            - `availableStartTime`
+                                                            - `availableEndTime`
+
+                                                            `placeRecommendationStrategy`와 출발지 필드는 보내지 않습니다.
+                                                            `scheduleMode`와 `placeMode`는 서버가 각각 `VOTE`, `NONE`으로 설정합니다.
+                                                            """,
+                                                    value = """
+                                                    {
+                                                      "name": "주말 일정 정하기",
+                                                      "description": "가능한 날짜를 정해요.",
+                                                      "maxParticipants": 4,
+                                                      "planningType": "SCHEDULE_ONLY",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "availableStartTime": "17:00",
+                                                      "availableEndTime": "23:00",
+                                                      "deadlineMinutes": 180
+                                                    }
+                                                    """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "PLACE_ONLY",
+                                                    description = """
+                                                            **허용 `planningType`**
+                                                            - `SCHEDULE_ONLY`
+                                                            - `PLACE_ONLY` ← 이 예시
+                                                            - `SCHEDULE_AND_PLACE`
+
+                                                            **필수 입력**
+                                                            - `placeRecommendationStrategy`: `MIDDLE_POINT` 또는 `RANDOM`
+                                                            - `MIDDLE_POINT` 선택 시: `hostDepartureName`, `hostDepartureAddress`, `hostTransportationMode` (`PUBLIC_TRANSIT` 또는 `CAR`)
+
+                                                            일정 필드는 보내지 않습니다.
+                                                            `scheduleMode`와 `placeMode`는 서버가 각각 `NONE`, `RECOMMEND`로 설정합니다.
+                                                            """,
+                                                    value = """
+                                                    {
+                                                      "name": "카페 장소 정하기",
+                                                      "description": "만날 장소를 정해요.",
+                                                      "maxParticipants": 8,
+                                                      "planningType": "PLACE_ONLY",
+                                                      "placeRecommendationStrategy": "RANDOM",
+                                                      "deadlineMinutes": 720
+                                                    }
+                                                    """
+                                            )
+                                    }
+                            ),
+                            @Content(
                             mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
-                            encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)
+                            encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "SCHEDULE_AND_PLACE",
+                                            description = """
+                                                    **허용 `planningType`**
+                                                    - `SCHEDULE_ONLY`
+                                                    - `PLACE_ONLY`
+                                                    - `SCHEDULE_AND_PLACE` ← 이 예시
+
+                                                    **필수 `request` JSON 입력**
+                                                    - 일정: `scheduleCandidateDates`, `availableStartTime`, `availableEndTime`
+                                                    - 장소 전략: `placeRecommendationStrategy` (`MIDDLE_POINT` 또는 `RANDOM`)
+                                                    - `MIDDLE_POINT` 선택 시: `hostDepartureName`, `hostDepartureAddress`, `hostTransportationMode` (`PUBLIC_TRANSIT` 또는 `CAR`)
+
+                                                    `scheduleMode`와 `placeMode`는 보내지 않습니다. 서버가 각각 `VOTE`, `RECOMMEND`로 설정합니다.
+                                                    `coverImage`는 선택 파일 파트이며, 사진이 없으면 생략합니다.
+                                                    """,
+                                            value = """
+                                                    {
+                                                      "request": {
+                                                        "name": "토요일 저녁 모임",
+                                                        "description": "오랜만에 같이 저녁 먹어요.",
+                                                        "maxParticipants": 6,
+                                                        "planningType": "SCHEDULE_AND_PLACE",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                        "availableStartTime": "17:00",
+                                                        "availableEndTime": "23:00",
+                                                        "placeRecommendationStrategy": "MIDDLE_POINT",
+                                                        "hostDepartureName": "회사",
+                                                        "hostDepartureAddress": "서울 강남구 테헤란로 123",
+                                                        "hostTransportationMode": "PUBLIC_TRANSIT",
+                                                        "deadlineMinutes": 1440
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "SCHEDULE_ONLY",
+                                            description = """
+                                                    **허용 `planningType`**
+                                                    - `SCHEDULE_ONLY` ← 이 예시
+                                                    - `PLACE_ONLY`
+                                                    - `SCHEDULE_AND_PLACE`
+
+                                                    **필수 `request` JSON 입력**
+                                                    - `scheduleCandidateDates`
+                                                    - `availableStartTime`
+                                                    - `availableEndTime`
+
+                                                    `placeRecommendationStrategy`와 출발지 필드는 보내지 않습니다.
+                                                    `scheduleMode`와 `placeMode`는 서버가 각각 `VOTE`, `NONE`으로 설정합니다.
+                                                    `coverImage`는 선택 파일 파트이며, 사진이 없으면 생략합니다.
+                                                    """,
+                                            value = """
+                                                    {
+                                                      "request": {
+                                                        "name": "주말 일정 정하기",
+                                                        "description": "가능한 날짜를 정해요.",
+                                                        "maxParticipants": 4,
+                                                        "planningType": "SCHEDULE_ONLY",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                        "availableStartTime": "17:00",
+                                                        "availableEndTime": "23:00",
+                                                        "deadlineMinutes": 180
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "PLACE_ONLY",
+                                            description = """
+                                                    **허용 `planningType`**
+                                                    - `SCHEDULE_ONLY`
+                                                    - `PLACE_ONLY` ← 이 예시
+                                                    - `SCHEDULE_AND_PLACE`
+
+                                                    **필수 `request` JSON 입력**
+                                                    - `placeRecommendationStrategy`: `MIDDLE_POINT` 또는 `RANDOM`
+                                                    - `MIDDLE_POINT` 선택 시: `hostDepartureName`, `hostDepartureAddress`, `hostTransportationMode` (`PUBLIC_TRANSIT` 또는 `CAR`)
+
+                                                    일정 필드는 보내지 않습니다.
+                                                    `scheduleMode`와 `placeMode`는 서버가 각각 `NONE`, `RECOMMEND`로 설정합니다.
+                                                    `coverImage`는 선택 파일 파트이며, 사진이 없으면 생략합니다.
+                                                    """,
+                                            value = """
+                                                    {
+                                                      "request": {
+                                                        "name": "카페 장소 정하기",
+                                                        "description": "만날 장소를 정해요.",
+                                                        "maxParticipants": 8,
+                                                        "planningType": "PLACE_ONLY",
+                                                        "placeRecommendationStrategy": "RANDOM",
+                                                        "deadlineMinutes": 720
+                                                      }
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
+                    }
             )
     )
     @SecurityRequirement(name = "bearerAuth")
@@ -222,7 +414,7 @@ public class MeetingController {
     }
 
     @PutMapping(value = "/{meetingId}/cover-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "모임 커버 사진 교체", description = "임시 MVP 정책상 방장만 커버 사진을 교체할 수 있습니다. 응답의 coverImageUrl로 화면 이미지를 갱신합니다.")
+    @Operation(summary = "모임 커버 사진 교체", description = "임시 MVP 정책상 방장만 커버 사진을 교체할 수 있습니다. 성공 응답의 coverImageUrl은 새로 저장된 이미지의 상대 조회 경로입니다. 프론트는 기존 <img src>를 이 값에 API 서버 주소를 붙인 URL로 교체합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "커버 사진 교체 성공"),
@@ -254,7 +446,7 @@ public class MeetingController {
     }
 
     @GetMapping("/invitations/{inviteCode}/cover-image")
-    @Operation(summary = "초대 링크 모임 커버 사진 조회", description = "응답 DTO의 coverImageUrl을 사용합니다. v 쿼리는 브라우저 캐시 갱신 전용이며 서버는 현재 커버 이미지를 반환합니다.")
+    @Operation(summary = "초대 링크 모임 커버 사진 조회", description = "초대 조회·모임 조회 응답의 coverImageUrl을 그대로 사용해 <img src>에 넣는 이미지 바이너리 API입니다. 상대 경로이므로 프론트 API 서버 주소를 앞에 붙입니다. v 쿼리는 브라우저 캐시 갱신 전용이며 변경하거나 제거하지 않습니다. 응답은 1년 immutable 캐시 정책을 사용합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "커버 사진 조회 성공"),
             @ApiResponse(responseCode = "404", description = "모임 또는 커버 사진 없음"),

@@ -17,7 +17,7 @@ public record MeetingViewResponse(
         @Schema(description = "모임 설명. 입력하지 않은 경우 null입니다.", example = "오랜만에 같이 저녁 먹어요.")
         String description,
 
-        @Schema(description = "캐시 버전이 포함된 커버 이미지 조회 경로. 커버가 없으면 null입니다.", example = "/api/meetings/invitations/ABCD234567/cover-image?v=15v9zq")
+        @Schema(description = "이미 저장된 커버 이미지를 <img src>에 표시할 때 쓰는 상대 API 경로입니다. API 서버 주소를 앞에 붙여 사용하며, v 값은 캐시 갱신용이므로 변경하지 않습니다. 커버가 없으면 null입니다.", example = "/api/meetings/invitations/ABCD234567/cover-image?v=15v9zq")
         String coverImageUrl,
 
         @Schema(description = "모임 생성 유형", example = "SCHEDULE_AND_PLACE", allowableValues = {"SCHEDULE_ONLY", "PLACE_ONLY", "SCHEDULE_AND_PLACE"})

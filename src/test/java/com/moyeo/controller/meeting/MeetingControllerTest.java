@@ -72,7 +72,7 @@ class MeetingControllerTest {
     private MeetingCoverStorage meetingCoverStorage;
 
     @Test
-    void createMeetingReturnsInviteCodeAndHostParticipant() throws Exception {
+    void createMeetingReturnsMinimalInviteResponse() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost1", "host1");
 
         mockMvc.perform(post("/api/meetings")
@@ -82,25 +82,11 @@ class MeetingControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.meetingId").isNumber())
-                .andExpect(jsonPath("$.name").value("weekend-meeting"))
-                .andExpect(jsonPath("$.description").value("dinner together"))
-                .andExpect(jsonPath("$.maxParticipants").value(6))
-                .andExpect(jsonPath("$.planningType").value("SCHEDULE_AND_PLACE"))
-                .andExpect(jsonPath("$.scheduleMode").value("VOTE"))
-                .andExpect(jsonPath("$.scheduleCandidateDates[0]").value("2026-07-01"))
-                .andExpect(jsonPath("$.availableStartTime").value("09:00:00"))
-                .andExpect(jsonPath("$.availableEndTime").value("18:00:00"))
-                .andExpect(jsonPath("$.placeMode").value("RECOMMEND"))
-                .andExpect(jsonPath("$.placeRecommendationStrategy").value("MIDDLE_POINT"))
-                .andExpect(jsonPath("$.deadlineAt").isString())
                 .andExpect(jsonPath("$.inviteCode").isString())
                 .andExpect(jsonPath("$.invitePath").isString())
-                .andExpect(jsonPath("$.hostDepartureName").value("company"))
-                .andExpect(jsonPath("$.hostDepartureAddress").value("Seoul Gangnam"))
-                .andExpect(jsonPath("$.hostDepartureLatitude").value(37.498095))
-                .andExpect(jsonPath("$.hostDepartureLongitude").value(127.027610))
-                .andExpect(jsonPath("$.hostTransportationMode").value("PUBLIC_TRANSIT"))
-                .andExpect(jsonPath("$.hostParticipantId").isNumber());
+                .andExpect(jsonPath("$.*").value(org.hamcrest.Matchers.hasSize(3)))
+                .andExpect(jsonPath("$.name").doesNotExist())
+                .andExpect(jsonPath("$.coverImageUrl").doesNotExist());
     }
 
     @Test
@@ -124,9 +110,10 @@ class MeetingControllerTest {
                         .file(coverImage)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.coverImageUrl").value(org.hamcrest.Matchers.startsWith(
-                        "/api/meetings/invitations/")))
-                .andExpect(jsonPath("$.coverImageUrl").value(org.hamcrest.Matchers.containsString("/cover-image?v=")));
+                .andExpect(jsonPath("$.meetingId").isNumber())
+                .andExpect(jsonPath("$.inviteCode").isString())
+                .andExpect(jsonPath("$.invitePath").isString())
+                .andExpect(jsonPath("$.coverImageUrl").doesNotExist());
 
         verify(meetingCoverStorage).put(any(String.class), any(byte[].class));
     }
@@ -145,6 +132,7 @@ class MeetingControllerTest {
                         .file(request)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.inviteCode").isString())
                 .andExpect(jsonPath("$.coverImageUrl").doesNotExist());
     }
 
@@ -187,7 +175,8 @@ class MeetingControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        Long hostParticipantId = objectMapper.readTree(response).get("hostParticipantId").asLong();
+        Long meetingId = objectMapper.readTree(response).get("meetingId").asLong();
+        Long hostParticipantId = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meetingId).getFirst().getId();
         assertThat(meetingParticipantScheduleAvailabilityRepository.countByParticipantId(hostParticipantId)).isEqualTo(2);
     }
 
@@ -354,11 +343,10 @@ class MeetingControllerTest {
                 1440
         );
 
-        mockMvc.perform(post("/api/meetings")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
+        String inviteCode = createMeetingAndGetInviteCode(accessToken, request);
+
+        mockMvc.perform(get("/api/meetings/invitations/{inviteCode}", inviteCode))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.planningType").value("PLACE_ONLY"))
                 .andExpect(jsonPath("$.scheduleMode").value("NONE"))
                 .andExpect(jsonPath("$.scheduleCandidateDates").isEmpty())
@@ -389,11 +377,10 @@ class MeetingControllerTest {
                 1440
         );
 
-        mockMvc.perform(post("/api/meetings")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
+        String inviteCode = createMeetingAndGetInviteCode(accessToken, request);
+
+        mockMvc.perform(get("/api/meetings/invitations/{inviteCode}", inviteCode))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduleCandidateDates.length()").value(2))
                 .andExpect(jsonPath("$.scheduleCandidateDates[0]").value("2026-07-01"))
                 .andExpect(jsonPath("$.scheduleCandidateDates[1]").value("2026-07-02"));
