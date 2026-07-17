@@ -37,3 +37,6 @@ moyeo:
       - Authorization
       - Content-Type
     max-age-seconds: 3600
+  address-search:
+    base-url: https://business.juso.go.kr/addrlink/addrLinkApi.do
+    confirmation-key: ${JUSO_SEARCH_CONFM_KEY:}

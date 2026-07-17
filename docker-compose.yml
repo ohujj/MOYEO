@@ -11,6 +11,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      JUSO_SEARCH_CONFM_KEY: ${JUSO_SEARCH_CONFM_KEY:-}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health | grep -q OK"]
       interval: 30s

@@ -30,9 +30,8 @@ general best practice into domain policy.
   keeps the meeting creation strategy fixed after creation; later place
   recommendation/finalization flow may revisit switching between middle-point and
   random recommendations.
-- Middle-point meeting creation stores the host departure name, address, latitude,
-  longitude, and transportation mode snapshot on the host `meeting_participants`
-  row. Actual middle-point calculation remains deferred.
+- Middle-point meeting creation stores the host departure name, address, and transportation mode snapshot on the host `meeting_participants` row. Until the coordinate API key is approved, latitude and longitude may both be omitted as a temporary development policy; fabricated coordinates must not be stored.
+- A participant whose coordinate pair is omitted counts as having submitted a departure snapshot, but is excluded from the straight-line middle-point preview. If no submitted departure has coordinates, the place view returns `COORDINATES_PENDING` with no recommendations.
 - Meeting creation receives `deadlineMinutes`; the server calculates and returns
   `deadlineAt`.
 - `deadlineMinutes` is currently accepted in 10-minute units from 10 minutes up
@@ -118,8 +117,7 @@ general best practice into domain policy.
   atomically.
 - Join requests save departure and transportation mode for
   `PLACE_ONLY` and `SCHEDULE_AND_PLACE` meetings.
-- Place participation stores the participant departure name, address, latitude,
-  longitude, and transportation mode snapshot on `meeting_participants`.
+- Place participation stores the participant departure name, address, latitude, longitude, and transportation mode snapshot on `meeting_participants`. Until the coordinate API key is approved, latitude and longitude may both be omitted; one without the other is invalid.
 - Join rejects mismatched input, such as departure input for schedule-only
   meetings or schedule availability input for place-only meetings.
 
@@ -163,9 +161,8 @@ general best practice into domain policy.
   direct-input flow.
 - TODO: Host departure address modification is out of the first MVP creation
   scope and should be handled with the later participation/modification flow.
-- Address search, GPS/current-location lookup, saved departure lists, and member
-  departure CRUD are P1 or later client/domain work; the server only stores the
-  selected departure snapshot in this flow.
+- Address search uses the road-name address search API through the server. The API key remains server-side, and the search response intentionally contains no coordinates until the separately requested coordinate API key is approved.
+- GPS/current-location lookup, saved departure lists, and member departure CRUD are P1 or later client/domain work.
 - Guest re-entry remains deferred until its policy is confirmed.
 - Guest modification remains deferred until its policy is confirmed.
 - Participant password verification for re-entry or modification remains

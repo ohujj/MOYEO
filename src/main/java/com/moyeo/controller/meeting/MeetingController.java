@@ -55,7 +55,7 @@ public class MeetingController {
                             examples = {
                                     @ExampleObject(
                                             name = "SCHEDULE_AND_PLACE",
-                                            description = "일정 조율(VOTE)과 장소 추천 방식(RECOMMEND)을 함께 저장하는 생성 요청입니다. 생성 성공 응답의 inviteCode를 복사해 초대 코드 조회와 회원/게스트 참여 API의 {inviteCode}에 넣으세요. 아래 후보 날짜와 시간 범위는 참여 API의 예시와 연결됩니다. 장소 추천 방식은 MIDDLE_POINT 또는 RANDOM 중 선택합니다. 1차 MVP에서는 생성 후 변경하지 않으며, 생성 시점에는 추천 결과나 확정 장소를 만들지 않습니다. MIDDLE_POINT를 선택하면 방장 출발지 이름, 주소, 좌표, 이동수단을 방장 참여자 정보에 저장합니다.",
+                                            description = "일정 조율(VOTE)과 장소 추천 방식(RECOMMEND)을 함께 저장하는 생성 요청입니다. 생성 성공 응답의 inviteCode를 복사해 초대 코드 조회와 회원/게스트 참여 API의 {inviteCode}에 넣으세요. 아래 후보 날짜와 시간 범위는 참여 API의 예시와 연결됩니다. 장소 추천 방식은 MIDDLE_POINT 또는 RANDOM 중 선택합니다. 1차 MVP에서는 생성 후 변경하지 않으며, 생성 시점에는 추천 결과나 확정 장소를 만들지 않습니다. MIDDLE_POINT를 선택하면 방장 출발지 이름, 주소, 이동수단을 저장합니다. 좌표 제공 API 승인 전까지 위도와 경도는 함께 생략할 수 있습니다.",
                                             value = """
                                                     {
                                                       "name": "토요일 저녁 모임",

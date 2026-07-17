@@ -95,12 +95,12 @@ public record CreateMeetingRequest(
         @Size(max = 255)
         String hostDepartureAddress,
 
-        @Schema(description = "방장 출발지 위도입니다. placeRecommendationStrategy가 MIDDLE_POINT일 때만 필수입니다.", example = "37.498095")
+        @Schema(description = "방장 출발지 위도입니다. 좌표 제공 API 승인 전까지 경도와 함께 생략할 수 있으며, 둘 중 하나만 보내면 안 됩니다.", example = "37.498095")
         @DecimalMin("-90.0")
         @DecimalMax("90.0")
         BigDecimal hostDepartureLatitude,
 
-        @Schema(description = "방장 출발지 경도입니다. placeRecommendationStrategy가 MIDDLE_POINT일 때만 필수입니다.", example = "127.027610")
+        @Schema(description = "방장 출발지 경도입니다. 좌표 제공 API 승인 전까지 위도와 함께 생략할 수 있으며, 둘 중 하나만 보내면 안 됩니다.", example = "127.027610")
         @DecimalMin("-180.0")
         @DecimalMax("180.0")
         BigDecimal hostDepartureLongitude,
@@ -144,7 +144,7 @@ public record CreateMeetingRequest(
         return !requiresPlace() || placeRecommendationStrategy != null;
     }
 
-    @AssertTrue(message = "중간지점 추천에는 방장 출발지 이름, 주소, 좌표, 이동수단이 필요합니다.")
+    @AssertTrue(message = "중간지점 추천에는 방장 출발지 이름, 주소, 이동수단이 필요하며 위도와 경도는 함께 보내거나 함께 생략해야 합니다.")
     @Schema(hidden = true)
     public boolean isValidHostDeparture() {
         if (!requiresPlace() || placeRecommendationStrategy != PlaceRecommendationStrategy.MIDDLE_POINT) {
@@ -152,9 +152,8 @@ public record CreateMeetingRequest(
         }
         return hasText(hostDepartureName)
                 && hasText(hostDepartureAddress)
-                && hostDepartureLatitude != null
-                && hostDepartureLongitude != null
-                && hostTransportationMode != null;
+                && hostTransportationMode != null
+                && (hostDepartureLatitude == null) == (hostDepartureLongitude == null);
     }
 
     @AssertTrue(message = "마감 시간은 10분 단위로 입력해야 합니다.")

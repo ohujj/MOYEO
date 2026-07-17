@@ -217,6 +217,9 @@ public class MeetingService {
         List<MeetingParticipant> departureParticipants = participants.stream()
                 .filter(this::hasDeparture)
                 .toList();
+        List<MeetingParticipant> coordinateParticipants = departureParticipants.stream()
+                .filter(this::hasCoordinates)
+                .toList();
         List<PlaceViewResult.ParticipantDepartureStatus> participantStatuses = participants.stream()
                 .map(participant -> new PlaceViewResult.ParticipantDepartureStatus(
                         participant.getId(),
@@ -258,14 +261,18 @@ public class MeetingService {
             );
         }
 
-        if (departureParticipants.isEmpty()) {
-            return emptyPlaceView(meeting, participants.size(), 0, participantStatuses, strategy);
+        if (coordinateParticipants.isEmpty()) {
+            return new PlaceViewResult(
+                    meeting.getId(), strategy, "COORDINATES_PENDING", null, participants.size(),
+                    departureParticipants.size(), participantStatuses, List.of(),
+                    "Address coordinates are temporarily unavailable."
+            );
         }
 
-        PlaceViewResult.Coordinate center = averageCoordinate(departureParticipants);
+        PlaceViewResult.Coordinate center = averageCoordinate(coordinateParticipants);
         List<PlaceViewResult.Recommendation> recommendations = commercialAreaCatalog.findAll()
                 .stream()
-                .map(area -> scoreArea(area, departureParticipants))
+                .map(area -> scoreArea(area, coordinateParticipants))
                 .sorted(Comparator.comparingLong(ScoredCommercialArea::score)
                         .thenComparing(scoredArea -> scoredArea.area().areaName()))
                 .limit(5)
@@ -432,9 +439,13 @@ public class MeetingService {
     }
 
     private boolean hasDeparture(MeetingParticipant participant) {
-        return participant.getDepartureLatitude() != null
-                && participant.getDepartureLongitude() != null
-                && participant.getDepartureAddress() != null;
+        return participant.getDepartureName() != null
+                && participant.getDepartureAddress() != null
+                && participant.getTransportationMode() != null;
+    }
+
+    private boolean hasCoordinates(MeetingParticipant participant) {
+        return participant.getDepartureLatitude() != null && participant.getDepartureLongitude() != null;
     }
 
     private long remainingMinutes(LocalDateTime deadlineAt) {

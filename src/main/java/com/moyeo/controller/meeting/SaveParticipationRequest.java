@@ -80,13 +80,11 @@ public record SaveParticipationRequest(
             String address,
 
             @Schema(description = "출발지 위도입니다.", example = "37.498095")
-            @NotNull
             @DecimalMin("-90.0")
             @DecimalMax("90.0")
             BigDecimal latitude,
 
             @Schema(description = "출발지 경도입니다.", example = "127.027610")
-            @NotNull
             @DecimalMin("-180.0")
             @DecimalMax("180.0")
             BigDecimal longitude,
@@ -105,6 +103,12 @@ public record SaveParticipationRequest(
             @NotNull
             TransportationMode transportationMode
     ) {
+
+        @jakarta.validation.constraints.AssertTrue(message = "Latitude and longitude must be sent together.")
+        @Schema(hidden = true)
+        public boolean isValidCoordinatePair() {
+            return (latitude == null) == (longitude == null);
+        }
 
         private SaveParticipationCommand.Departure toCommand() {
             return new SaveParticipationCommand.Departure(name, address, latitude, longitude, transportationMode);

@@ -110,8 +110,13 @@ Not included yet:
 The current meeting implementation covers the first milestone base flow.
 
 - `POST /api/meetings`
+- `POST /api/addresses/searches`
 - `GET /api/meetings/invitations/{inviteCode}`
+- `GET /api/meetings/invitations/{inviteCode}/view`
+- `GET /api/meetings/invitations/{inviteCode}/view/schedules`
+- `GET /api/meetings/invitations/{inviteCode}/view/places`
 - `POST /api/meetings/invitations/{inviteCode}/guests`
+- `POST /api/meetings/invitations/{inviteCode}/members`
 - `PUT /api/meetings/invitations/{inviteCode}/participants/{participantId}/participation`
 
 Current meeting scope:
@@ -129,22 +134,25 @@ Current meeting scope:
 - Schedule voting time ranges are accepted in 1-hour units.
 - Guest participation is rejected after `deadlineAt`.
 - Invite-code lookup returns whether the current meeting can still be joined and the reason/message when joining is blocked.
-- Schedule/place coordination modes are stored, but recommendation calculation is not implemented yet.
 - Middle-point creation stores the host departure name, address, coordinates, and transportation mode as the host participant snapshot.
+- `POST /api/addresses/searches` searches road-name addresses through the server and returns address-identification fields needed for later coordinate lookup.
+- Temporary coordinate policy: until the coordinate API key is approved, latitude and longitude may both be omitted from a departure snapshot. The place view returns `COORDINATES_PENDING` instead of fabricating a middle-point preview when no coordinates are available.
 - Place recommendation strategy is fixed after meeting creation in the first MVP.
 - INV-02 participation input stores schedule availability for schedule-coordination meetings.
 - INV-02 participation input stores departure address, coordinates, and transportation mode for place-coordination meetings.
 - A participation save request replaces the participant's previous schedule availability slots.
-- Schedule result logic, including intersection calculation and sorting by longest meeting time or earliest date, is not implemented yet.
+- Public pre-confirmation meeting views provide participation status, schedule candidates, and place recommendations.
+- Schedule candidates are calculated from saved availability slots and can be sorted by longest meeting time or earliest date; each request returns up to five candidates.
+- Middle-point place recommendations use saved departure coordinates and a temporary commercial-area catalog to return up to five straight-line-distance preview candidates.
+- Random place recommendations return up to five candidates from the temporary commercial-area catalog.
 
 Not included yet:
 
 - Step-by-step meeting draft save
-- Schedule coordination beyond participant availability input
-- Place coordination beyond participant departure input
+- Actual travel-time-based place ranking and final place confirmation
 - Current-location lookup and saved departure-list management
 - Tmap/Tmap Transit integration
-- Store-area/place recommendation data
+- Persistent commercial-area data import and management
 - Voting/free-poll
 - Final decision/result
 - Meeting list/detail tabs
