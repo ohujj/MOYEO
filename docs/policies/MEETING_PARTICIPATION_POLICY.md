@@ -131,14 +131,9 @@ general best practice into domain policy.
 - Guest join stores the participant password as a hash on the
   `meeting_participants` row. Guest password verification for later re-entry or
   modification remains deferred until its policy is confirmed.
-- TODO (guest re-entry and modification): If this flow is confirmed, issue a
-  guest token scoped to exactly one `meetingId` and `participantId` after guest
-  join. The frontend must store guest tokens by invite code, not in the single
-  member Access Token slot, and send only the token for the invite link being
-  opened. The server must verify that the token's meeting matches the requested
-  invite code before exposing an already-joined or modification flow. Define
-  token lifetime, loss/recovery, invalidation, and when the guest password must
-  be re-entered before implementation.
+- Guest join does not issue an Access JWT or a guest JWT. Authentication for a
+  later guest re-entry or modification flow remains deferred until that flow's
+  policy is confirmed.
 - A repeated guest join attempt with the same nickname as an existing guest in
   the same meeting should continue to return a duplicate nickname conflict, even if
   the same password is provided.

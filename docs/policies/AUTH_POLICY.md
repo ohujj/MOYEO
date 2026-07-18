@@ -23,8 +23,9 @@ identity remain separated through `User`, `LoginAccount`, and `SocialAccount`.
   authentication.
 - Validate Access JWT format, signature, required headers and claims, expiration,
   and required JWT configuration at startup.
-- Keep the current JWT implementation minimal: no refresh token, logout, token
-  rotation, or guest token yet.
+- Keep the current JWT implementation minimal: no refresh token, logout, or
+  token rotation.
+- Guest meeting participation does not issue an Access JWT or a guest JWT.
 - Store real JWT secrets through environment variables in dev/prod.
 
 ## Development Test Accounts
