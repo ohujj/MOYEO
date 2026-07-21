@@ -21,14 +21,8 @@ public record ScheduleViewResponse(
         @Schema(description = "현재 참여 인원. 방장을 포함합니다.", example = "4")
         long participantCount,
 
-        @Schema(description = "가능 날짜 또는 가능 시간대를 1개 이상 입력한 인원 수", example = "3")
-        long respondedParticipantCount,
-
-        @Schema(description = "일정 후보 목록. 최대 5개를 반환합니다.")
-        List<CandidateResponse> candidates,
-
-        @Schema(description = "후보가 없을 때 표시할 문구. 후보가 있으면 null입니다.", example = "겹치는 시간이 없어요.")
-        String emptyMessage
+        @Schema(description = "일정 후보 목록. 적용된 정렬 방식에 따라 최대 3개를 반환합니다. 후보가 없으면 빈 배열입니다.")
+        List<CandidateResponse> candidates
 ) {
 
     public static ScheduleViewResponse from(ScheduleViewResult result) {
@@ -37,9 +31,7 @@ public record ScheduleViewResponse(
                 result.scheduleInputType(),
                 result.sort(),
                 result.participantCount(),
-                result.respondedParticipantCount(),
-                result.candidates().stream().map(CandidateResponse::from).toList(),
-                result.emptyMessage()
+                result.candidates().stream().map(CandidateResponse::from).toList()
         );
     }
 
@@ -55,10 +47,7 @@ public record ScheduleViewResponse(
             LocalTime endTime,
 
             @Schema(description = "해당 날짜 또는 시간에 참여 가능한 인원 수", example = "3")
-            long availableParticipantCount,
-
-            @Schema(description = "전체 참여 인원 수", example = "4")
-            long totalParticipantCount
+            long availableParticipantCount
     ) {
 
         private static CandidateResponse from(ScheduleViewResult.Candidate candidate) {
@@ -66,8 +55,7 @@ public record ScheduleViewResponse(
                     candidate.candidateDate(),
                     candidate.startTime(),
                     candidate.endTime(),
-                    candidate.availableParticipantCount(),
-                    candidate.totalParticipantCount()
+                    candidate.availableParticipantCount()
             );
         }
     }

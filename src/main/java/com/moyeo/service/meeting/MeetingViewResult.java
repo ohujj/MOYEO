@@ -17,18 +17,13 @@ public record MeetingViewResult(
         long participantCount,
         LocalDateTime deadlineAt,
         long remainingMinutes,
-        long respondedParticipantCount,
-        double responseRate,
-        List<ParticipantStatus> participants
+        List<Participant> participants
 ) {
 
-    public record ParticipantStatus(
+    public record Participant(
             Long participantId,
             String nickname,
-            String participantType,
-            boolean scheduleResponded,
-            boolean placeResponded,
-            boolean responseCompleted
+            String participantType
     ) {
     }
 }

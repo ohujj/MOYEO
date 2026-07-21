@@ -9,10 +9,8 @@ public record PlaceViewResult(
         String recommendationBasis,
         Coordinate center,
         long participantCount,
-        long departureRespondedParticipantCount,
-        List<ParticipantDepartureStatus> participants,
-        List<Recommendation> recommendations,
-        String emptyMessage
+        List<ParticipantDeparture> participants,
+        List<Recommendation> recommendations
 ) {
 
     public record Coordinate(
@@ -21,11 +19,10 @@ public record PlaceViewResult(
     ) {
     }
 
-    public record ParticipantDepartureStatus(
+    public record ParticipantDeparture(
             Long participantId,
             String nickname,
             String participantType,
-            boolean departureResponded,
             String departureName,
             String departureAddress,
             String transportationMode

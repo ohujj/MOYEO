@@ -47,14 +47,8 @@ public record MeetingViewResponse(
         @Schema(description = "현재 서버 시간 기준 마감까지 남은 분. 이미 마감된 경우 0입니다.", example = "360")
         long remainingMinutes,
 
-        @Schema(description = "필수 참여 정보를 모두 입력한 인원 수", example = "2")
-        long respondedParticipantCount,
-
-        @Schema(description = "응답 완료 비율. 0부터 1 사이의 소수입니다.", example = "0.6667")
-        double responseRate,
-
-        @Schema(description = "참여자 응답 상태 목록. 방장이 먼저 오고 이후 참여 순서로 정렬됩니다.")
-        List<ParticipantStatusResponse> participants
+        @Schema(description = "참여자 목록. 방장이 먼저 오고 이후 참여 순서로 정렬됩니다.")
+        List<ParticipantResponse> participants
 ) {
 
     public static MeetingViewResponse from(MeetingViewResult result) {
@@ -72,14 +66,12 @@ public record MeetingViewResponse(
                 result.participantCount(),
                 result.deadlineAt(),
                 result.remainingMinutes(),
-                result.respondedParticipantCount(),
-                result.responseRate(),
-                result.participants().stream().map(ParticipantStatusResponse::from).toList()
+                result.participants().stream().map(ParticipantResponse::from).toList()
         );
     }
 
-    @Schema(description = "참여자 응답 상태")
-    public record ParticipantStatusResponse(
+    @Schema(description = "모임 참여자")
+    public record ParticipantResponse(
             @Schema(description = "모임 참여자 ID", example = "1")
             Long participantId,
 
@@ -87,26 +79,14 @@ public record MeetingViewResponse(
             String nickname,
 
             @Schema(description = "참여자 유형", example = "HOST", allowableValues = {"HOST", "MEMBER", "GUEST"})
-            String participantType,
-
-            @Schema(description = "일정 조율 응답 여부입니다. scheduleMode가 NONE이면 항상 false입니다.", example = "true")
-            boolean scheduleResponded,
-
-            @Schema(description = "장소 조율 출발지 입력 여부입니다. placeMode가 NONE이면 항상 false입니다.", example = "true")
-            boolean placeResponded,
-
-            @Schema(description = "이 모임에서 필요한 참여 정보를 모두 입력했는지 여부", example = "true")
-            boolean responseCompleted
+            String participantType
     ) {
 
-        private static ParticipantStatusResponse from(MeetingViewResult.ParticipantStatus status) {
-            return new ParticipantStatusResponse(
-                    status.participantId(),
-                    status.nickname(),
-                    status.participantType(),
-                    status.scheduleResponded(),
-                    status.placeResponded(),
-                    status.responseCompleted()
+        private static ParticipantResponse from(MeetingViewResult.Participant participant) {
+            return new ParticipantResponse(
+                    participant.participantId(),
+                    participant.nickname(),
+                    participant.participantType()
             );
         }
     }

@@ -23,17 +23,11 @@ public record PlaceViewResponse(
         @Schema(description = "현재 참여 인원. 방장을 포함합니다.", example = "4")
         long participantCount,
 
-        @Schema(description = "출발지를 입력한 인원 수", example = "3")
-        long departureRespondedParticipantCount,
+        @Schema(description = "참여자별 출발지 정보")
+        List<ParticipantDepartureResponse> participants,
 
-        @Schema(description = "참여자별 출발지 입력 상태")
-        List<ParticipantDepartureStatusResponse> participants,
-
-        @Schema(description = "추천 상권 목록. 최대 5개를 반환합니다.")
-        List<RecommendationResponse> recommendations,
-
-        @Schema(description = "추천 목록이 없을 때 표시할 문구. 추천 목록이 있으면 null입니다.", example = "추천할 장소가 없어요.")
-        String emptyMessage
+        @Schema(description = "추천 상권 목록. 최대 5개를 반환하며 추천이 없으면 빈 배열입니다.")
+        List<RecommendationResponse> recommendations
 ) {
 
     public static PlaceViewResponse from(PlaceViewResult result) {
@@ -43,10 +37,8 @@ public record PlaceViewResponse(
                 result.recommendationBasis(),
                 result.center() != null ? CoordinateResponse.from(result.center()) : null,
                 result.participantCount(),
-                result.departureRespondedParticipantCount(),
-                result.participants().stream().map(ParticipantDepartureStatusResponse::from).toList(),
-                result.recommendations().stream().map(RecommendationResponse::from).toList(),
-                result.emptyMessage()
+                result.participants().stream().map(ParticipantDepartureResponse::from).toList(),
+                result.recommendations().stream().map(RecommendationResponse::from).toList()
         );
     }
 
@@ -64,8 +56,8 @@ public record PlaceViewResponse(
         }
     }
 
-    @Schema(description = "참여자 출발지 입력 상태")
-    public record ParticipantDepartureStatusResponse(
+    @Schema(description = "참여자 출발지 정보")
+    public record ParticipantDepartureResponse(
             @Schema(description = "모임 참여자 ID", example = "1")
             Long participantId,
 
@@ -74,9 +66,6 @@ public record PlaceViewResponse(
 
             @Schema(description = "참여자 유형", example = "HOST", allowableValues = {"HOST", "MEMBER", "GUEST"})
             String participantType,
-
-            @Schema(description = "출발지 입력 여부", example = "true")
-            boolean departureResponded,
 
             @Schema(description = "출발지 라벨. 입력하지 않았으면 null입니다.", example = "회사")
             String departureName,
@@ -88,15 +77,14 @@ public record PlaceViewResponse(
             String transportationMode
     ) {
 
-        private static ParticipantDepartureStatusResponse from(PlaceViewResult.ParticipantDepartureStatus status) {
-            return new ParticipantDepartureStatusResponse(
-                    status.participantId(),
-                    status.nickname(),
-                    status.participantType(),
-                    status.departureResponded(),
-                    status.departureName(),
-                    status.departureAddress(),
-                    status.transportationMode()
+        private static ParticipantDepartureResponse from(PlaceViewResult.ParticipantDeparture participant) {
+            return new ParticipantDepartureResponse(
+                    participant.participantId(),
+                    participant.nickname(),
+                    participant.participantType(),
+                    participant.departureName(),
+                    participant.departureAddress(),
+                    participant.transportationMode()
             );
         }
     }

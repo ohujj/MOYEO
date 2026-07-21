@@ -5,6 +5,7 @@ import com.moyeo.domain.meeting.PlanningType;
 import com.moyeo.domain.meeting.ScheduleMode;
 import com.moyeo.domain.meeting.ScheduleInputType;
 import com.moyeo.service.meeting.CreateMeetingCommand;
+import com.moyeo.service.meeting.SaveParticipationCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
@@ -12,16 +13,21 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Schema(description = """
         모임 생성 요청입니다. 선택한 생성 플로우에서 입력한 값을 마지막 링크 생성 시 한 번에 전송합니다.
         <ul>
-          <li>SCHEDULE_ONLY: 기본 정보, 일정 입력 유형, 선택한 경우 공통 시간대, 마감 시간</li>
-          <li>PLACE_ONLY: 기본 정보, 장소 추천 방식, 마감 시간</li>
-          <li>SCHEDULE_AND_PLACE: 기본 정보, 일정 입력 유형, 선택한 경우 공통 시간대, 장소 추천 방식, 마감 시간</li>
+          <li>SCHEDULE_ONLY: 기본 정보, 일정 입력 유형, 후보 날짜, 방장 가능 일정, 마감 시간</li>
+          <li>PLACE_ONLY: 기본 정보, 방장 출발지, 마감 시간</li>
+          <li>SCHEDULE_AND_PLACE: 기본 정보, 일정 입력 유형, 후보 날짜, 방장 가능 일정, 방장 출발지, 마감 시간</li>
         </ul>
+        DATE_ONLY에서는 후보 날짜가 곧 방장의 가능 날짜이므로 scheduleResponse를 보내지 않습니다.
+        DATE_AND_TIME에서는 공통 시간대와 그 범위 안의 방장 가능 시간대를 함께 보냅니다.
         확정 일정/확정 장소 직접 입력은 이번 MVP 생성 플로우에서 제외하며, 추후 회의에서 재검토합니다.
         """)
 public record CreateMeetingRequest(
@@ -69,6 +75,15 @@ public record CreateMeetingRequest(
 
         @Schema(description = "DATE_AND_TIME일 때 모든 후보 날짜에 공통으로 적용할 종료 시간입니다. 시작 시간보다 뒤여야 하고 1시간 단위이며 DATE_ONLY와 PLACE_ONLY에서는 보내지 않습니다.", example = "22:00")
         LocalTime availableEndTime,
+
+        @Schema(description = "방장이 정한 일정 후보 날짜입니다. 일정 조율 모임에서 필수이며 PLACE_ONLY에서는 보내지 않습니다.")
+        List<@NotNull LocalDate> scheduleCandidateDates,
+
+        @Schema(description = "방장의 일정 응답입니다. DATE_AND_TIME에서 availableTimeRanges를 보내고 DATE_ONLY에서는 생략합니다.")
+        @Valid SaveParticipationRequest.ScheduleResponseRequest scheduleResponse,
+
+        @Schema(description = "방장의 출발지와 이동수단입니다. 장소 조율 모임에서 필수입니다.")
+        @Valid SaveParticipationRequest.DepartureRequest departure,
 
         @Schema(description = "생성 요청 처리 시점부터 마감까지 남은 시간(분)입니다. 10분 단위이며 최소 10분, 최대 72시간입니다.", example = "1440", minimum = "10", maximum = "4320")
         @Min(10)
@@ -120,6 +135,10 @@ public record CreateMeetingRequest(
         );
     }
 
+    public SaveParticipationCommand toParticipationCommand() {
+        return SaveParticipationRequest.toCommand(scheduleResponse, departure);
+    }
+
     private ScheduleMode resolveScheduleMode() {
         return requiresSchedule() ? ScheduleMode.VOTE : ScheduleMode.NONE;
     }
@@ -133,10 +152,18 @@ public record CreateMeetingRequest(
     }
 
     private boolean requiresSchedule() {
-        return planningType == PlanningType.SCHEDULE_ONLY || planningType == PlanningType.SCHEDULE_AND_PLACE;
+        return requiresSchedule(planningType);
     }
 
     private boolean requiresPlace() {
+        return requiresPlace(planningType);
+    }
+
+    private static boolean requiresSchedule(PlanningType planningType) {
+        return planningType == PlanningType.SCHEDULE_ONLY || planningType == PlanningType.SCHEDULE_AND_PLACE;
+    }
+
+    private static boolean requiresPlace(PlanningType planningType) {
         return planningType == PlanningType.PLACE_ONLY || planningType == PlanningType.SCHEDULE_AND_PLACE;
     }
 

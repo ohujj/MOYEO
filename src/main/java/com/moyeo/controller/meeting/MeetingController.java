@@ -34,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/meetings")
-@Tag(name = "Meeting", description = "모임 생성, 방장 참여, 초대 코드 조회, 회원·게스트 참여 API")
+@Tag(name = "Meeting", description = "모임 생성, 초대 코드 조회, 회원·게스트 참여 API")
 public class MeetingController {
 
     private final MeetingService meetingService;
@@ -49,9 +49,8 @@ public class MeetingController {
     @Operation(
             summary = "모임 생성",
             description = """
-                    로그인한 사용자가 방장이 되어 모임의 공통 설정을 생성합니다.<br>
-                    생성 응답은 방장 참여 화면 진입에 사용할 meetingId만 반환합니다.
-                    후보 날짜와 방장 가능 시간·출발지는 생성 후 방장 참여 API에서 저장합니다.
+                    로그인한 사용자가 방장이 되어 모임 설정과 자신의 참여 정보를 한 요청으로 저장합니다.<br>
+                    생성 응답은 링크 공유에 사용할 meetingId, inviteCode, invitePath를 반환합니다.
                     <ul>
                       <li>SCHEDULE_ONLY: SCR-06 기본 정보 -> SCR-07 일정 정하기 -> SCR-09 마감 시간 -> SCR-10 완료. 일정 조율(VOTE)만 사용합니다.</li>
                       <li>PLACE_ONLY: SCR-06 기본 정보 -> SCR-08 장소 정하기 -> SCR-09 마감 시간 -> SCR-10 완료. 서버가 중간지점 장소 추천(RECOMMEND)으로 생성합니다.</li>
@@ -66,7 +65,7 @@ public class MeetingController {
                             examples = {
                                     @ExampleObject(
                                             name = "SCHEDULE_AND_PLACE",
-                                            description = "일정 조율(VOTE)과 장소 추천 방식(RECOMMEND)을 함께 저장하는 생성 요청입니다. 후보 날짜와 방장의 가능 시간·출발지는 생성 후 방장 참여 API에서 입력합니다.",
+                                            description = "일정 조율과 장소 조율에 필요한 후보 날짜, 방장 가능 시간, 출발지를 한 번에 저장합니다.",
                                             value = """
                                                     {
                                                       "name": "토요일 저녁 모임",
@@ -76,13 +75,24 @@ public class MeetingController {
                                                       "scheduleInputType": "DATE_AND_TIME",
                                                       "availableStartTime": "17:00",
                                                       "availableEndTime": "23:00",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "scheduleResponse": {
+                                                        "availableTimeRanges": [
+                                                          {"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}
+                                                        ]
+                                                      },
+                                                      "departure": {
+                                                        "name": "회사", "address": "서울 강남구 테헤란로 123",
+                                                        "latitude": 37.498095, "longitude": 127.027610,
+                                                        "transportationMode": "PUBLIC_TRANSIT"
+                                                      },
                                                       "deadlineMinutes": 1440
                                                     }
                                                     """
                                     ),
                                     @ExampleObject(
                                             name = "SCHEDULE_ONLY_DATE_ONLY",
-                                            description = "날짜만 정하는 일정 모임입니다. 시간대는 보내지 않고 후보 날짜는 방장 참여 API에서 받습니다.",
+                                            description = "날짜만 정하는 일정 모임입니다. 후보 날짜가 방장의 가능 날짜이며 시간대와 scheduleResponse는 보내지 않습니다.",
                                             value = """
                                                     {
                                                       "name": "저녁 일정 정하기",
@@ -90,19 +100,25 @@ public class MeetingController {
                                                       "maxParticipants": 4,
                                                       "planningType": "SCHEDULE_ONLY",
                                                       "scheduleInputType": "DATE_ONLY",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
                                                       "deadlineMinutes": 180
                                                     }
                                                     """
                                     ),
                                     @ExampleObject(
                                             name = "PLACE_ONLY",
-                                            description = "장소만 정하는 생성 요청입니다. 서버가 중간지점 장소 추천(RECOMMEND)으로 저장하며, 생성 시점에는 추천 결과나 확정 장소를 만들지 않습니다. 일정 후보와 시간대는 받지 않습니다.",
+                                            description = "장소만 정하는 생성 요청입니다. 방장 출발지를 함께 보내며 일정 관련 필드는 보내지 않습니다.",
                                             value = """
                                                     {
                                                       "name": "카페 장소 정하기",
                                                       "description": "먼저 갈 장소를 정해요.",
                                                       "maxParticipants": 8,
                                                       "planningType": "PLACE_ONLY",
+                                                      "departure": {
+                                                        "name": "회사", "address": "서울 강남구 테헤란로 123",
+                                                        "latitude": 37.498095, "longitude": 127.027610,
+                                                        "transportationMode": "PUBLIC_TRANSIT"
+                                                      },
                                                       "deadlineMinutes": 720
                                                     }
                                                     """
@@ -139,7 +155,9 @@ public class MeetingController {
             @Parameter(hidden = true) @CurrentMember AuthenticatedMember member,
             @Valid @RequestBody CreateMeetingRequest request
     ) {
-        return CreateMeetingResponse.from(meetingService.createMeeting(member, request.toCommand()));
+        return CreateMeetingResponse.from(meetingService.createMeeting(
+                member, request.toCommand(), request.scheduleCandidateDates(), request.toParticipationCommand()
+        ));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -150,6 +168,9 @@ public class MeetingController {
                     커버 사진은 선택 사항입니다. 사진이 없어도 이 multipart API로 모임을 생성할 수 있습니다.
                     이때 `coverImage` 파트만 생략합니다. `request`는 문자열이 아니라
                     `application/json` 타입의 Blob 파트여야 합니다.
+
+                    `request`에는 모임 설정과 방장의 후보 날짜·가능 일정·출발지를 선택한 플로우에 맞게
+                    모두 담습니다. 성공 시 `meetingId`, `inviteCode`, `invitePath`를 반환합니다.
 
                     `FormData` 요청에서 `Content-Type` 헤더는 직접 설정하지 마세요. 브라우저 또는 curl이
                     multipart boundary를 자동으로 추가합니다.
@@ -202,6 +223,17 @@ public class MeetingController {
                                                       "scheduleInputType": "DATE_AND_TIME",
                                                       "availableStartTime": "17:00",
                                                       "availableEndTime": "23:00",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "scheduleResponse": {
+                                                        "availableTimeRanges": [
+                                                          {"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}
+                                                        ]
+                                                      },
+                                                      "departure": {
+                                                        "name": "회사", "address": "서울 강남구 테헤란로 123",
+                                                        "latitude": 37.498095, "longitude": 127.027610,
+                                                        "transportationMode": "PUBLIC_TRANSIT"
+                                                      },
                                                       "deadlineMinutes": 1440
                                                     }
                                                     """
@@ -227,6 +259,8 @@ public class MeetingController {
                                                       "maxParticipants": 6,
                                                       "planningType": "SCHEDULE_AND_PLACE",
                                                       "scheduleInputType": "DATE_ONLY",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                       "deadlineMinutes": 1440
                                                     }
                                                     """
@@ -254,6 +288,8 @@ public class MeetingController {
                                                       "scheduleInputType": "DATE_AND_TIME",
                                                       "availableStartTime": "17:00",
                                                       "availableEndTime": "23:00",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                      "scheduleResponse": {"availableTimeRanges": [{"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}]},
                                                       "deadlineMinutes": 180
                                                     }
                                                     """
@@ -279,6 +315,7 @@ public class MeetingController {
                                                       "maxParticipants": 4,
                                                       "planningType": "SCHEDULE_ONLY",
                                                       "scheduleInputType": "DATE_ONLY",
+                                                      "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
                                                       "deadlineMinutes": 180
                                                     }
                                                     """
@@ -301,6 +338,7 @@ public class MeetingController {
                                                       "description": "만날 장소를 정해요.",
                                                       "maxParticipants": 8,
                                                       "planningType": "PLACE_ONLY",
+                                                      "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                       "deadlineMinutes": 720
                                                     }
                                                     """
@@ -339,6 +377,17 @@ public class MeetingController {
                                                         "scheduleInputType": "DATE_AND_TIME",
                                                         "availableStartTime": "17:00",
                                                         "availableEndTime": "23:00",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                        "scheduleResponse": {
+                                                          "availableTimeRanges": [
+                                                            {"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}
+                                                          ]
+                                                        },
+                                                        "departure": {
+                                                          "name": "회사", "address": "서울 강남구 테헤란로 123",
+                                                          "latitude": 37.498095, "longitude": 127.027610,
+                                                          "transportationMode": "PUBLIC_TRANSIT"
+                                                        },
                                                         "deadlineMinutes": 1440
                                                       }
                                                     }
@@ -366,6 +415,8 @@ public class MeetingController {
                                                         "maxParticipants": 6,
                                                         "planningType": "SCHEDULE_AND_PLACE",
                                                         "scheduleInputType": "DATE_ONLY",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                        "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                         "deadlineMinutes": 1440
                                                       }
                                                     }
@@ -395,6 +446,8 @@ public class MeetingController {
                                                         "scheduleInputType": "DATE_AND_TIME",
                                                         "availableStartTime": "17:00",
                                                         "availableEndTime": "23:00",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
+                                                        "scheduleResponse": {"availableTimeRanges": [{"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}]},
                                                         "deadlineMinutes": 180
                                                       }
                                                     }
@@ -423,6 +476,7 @@ public class MeetingController {
                                                         "maxParticipants": 4,
                                                         "planningType": "SCHEDULE_ONLY",
                                                         "scheduleInputType": "DATE_ONLY",
+                                                        "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
                                                         "deadlineMinutes": 180
                                                       }
                                                     }
@@ -448,6 +502,7 @@ public class MeetingController {
                                                         "description": "만날 장소를 정해요.",
                                                         "maxParticipants": 8,
                                                         "planningType": "PLACE_ONLY",
+                                                        "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                         "deadlineMinutes": 720
                                                       }
                                                     }
@@ -477,7 +532,9 @@ public class MeetingController {
             @Parameter(description = "선택 JPEG 또는 PNG 파일. 사진이 없으면 이 파트를 생략합니다.")
             @RequestPart(value = "coverImage", required = false) MultipartFile coverImage
     ) {
-        return CreateMeetingResponse.from(meetingService.createMeeting(member, request.toCommand(), coverImage));
+        return CreateMeetingResponse.from(meetingService.createMeeting(
+                member, request.toCommand(), request.scheduleCandidateDates(), request.toParticipationCommand(), coverImage
+        ));
     }
 
     @PutMapping(value = "/{meetingId}/cover-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -562,7 +619,7 @@ public class MeetingController {
             summary = "모임 현황 조회",
             description = """
                     확정 전 모임 상세 화면에서 표시할 기본 현황을 조회합니다.<br>
-                    로그인 없이 열람할 수 있으며, 참여 인원과 마감까지 남은 시간, 응답 완료 비율, 참여자별 응답 상태를 반환합니다.
+                    로그인 없이 열람할 수 있으며, 참여 인원과 마감까지 남은 시간, 참여자 목록을 반환합니다.
                     """
     )
     @ApiResponses({
@@ -587,7 +644,7 @@ public class MeetingController {
             summary = "일정 조율 현황 조회",
             description = """
                     확정 전 모임 상세 화면의 일정 조율 현황을 조회합니다.<br>
-                    저장된 참여자 가능 시간 슬롯을 집계해 최대 5개의 후보를 반환합니다.
+                    저장된 참여자 가능 시간 슬롯을 집계해 최대 3개의 후보를 반환합니다.
                     sort는 LONGEST_MEETING 또는 EARLIEST_DATE를 사용할 수 있으며, 생략하면 LONGEST_MEETING으로 정렬합니다.
                     """
     )
@@ -646,151 +703,16 @@ public class MeetingController {
         return PlaceViewResponse.from(meetingService.getPlaceView(inviteCode));
     }
 
-    @PutMapping("/{meetingId}/participation")
-    @Operation(
-            summary = "방장 모임 참여 완료",
-            description = """
-                    모임 생성 직후 방장이 다른 참여자와 같은 입력 흐름에서 자신의 참여 정보를 저장합니다.<br>
-                    DATE_ONLY는 후보 날짜만 입력하고, DATE_AND_TIME은 후보 날짜와 공통 시간대 안의 가능 시간을 함께 입력합니다.<br>
-                    장소 조율이 포함된 모임은 출발지와 이동수단도 입력합니다.<br>
-                    참여 완료 후 링크 공유 화면에 필요한 초대 코드와 상대 경로를 반환합니다.
-                    """,
-            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = {
-                                    @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_DATE_AND_TIME",
-                                            description = "생성 시 공통 시간대를 17:00~23:00으로 설정한 일정+장소 모임 예시입니다.",
-                                            value = """
-                                                    {
-                                                      "scheduleCandidateDates": [
-                                                        "2026-07-10",
-                                                        "2026-07-11",
-                                                        "2026-07-12",
-                                                        "2026-07-13",
-                                                        "2026-07-14"
-                                                      ],
-                                                      "scheduleResponse": {
-                                                        "availableTimeRanges": [
-                                                          {
-                                                            "candidateDate": "2026-07-10",
-                                                            "startTime": "18:00",
-                                                            "endTime": "20:00"
-                                                          },
-                                                          {
-                                                            "candidateDate": "2026-07-11",
-                                                            "startTime": "20:00",
-                                                            "endTime": "23:00"
-                                                          }
-                                                        ]
-                                                      },
-                                                      "departure": {
-                                                        "name": "회사",
-                                                        "address": "서울 강남구 테헤란로 123",
-                                                        "latitude": 37.498095,
-                                                        "longitude": 127.027610,
-                                                        "transportationMode": "PUBLIC_TRANSIT"
-                                                      }
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "SCHEDULE_ONLY_DATE_ONLY",
-                                            description = "날짜만 정하는 일정 모임은 scheduleResponse를 보내지 않습니다.",
-                                            value = """
-                                                    {
-                                                      "scheduleCandidateDates": [
-                                                        "2026-07-10",
-                                                        "2026-07-11",
-                                                        "2026-07-12",
-                                                        "2026-07-13",
-                                                        "2026-07-14"
-                                                      ]
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_DATE_ONLY",
-                                            description = "날짜만 정하면서 장소도 조율하는 모임은 후보 날짜와 출발지를 입력합니다.",
-                                            value = """
-                                                    {
-                                                      "scheduleCandidateDates": [
-                                                        "2026-07-10",
-                                                        "2026-07-11",
-                                                        "2026-07-12",
-                                                        "2026-07-13",
-                                                        "2026-07-14"
-                                                      ],
-                                                      "departure": {
-                                                        "name": "회사",
-                                                        "address": "서울 강남구 테헤란로 123",
-                                                        "latitude": 37.498095,
-                                                        "longitude": 127.027610,
-                                                        "transportationMode": "PUBLIC_TRANSIT"
-                                                      }
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "PLACE_ONLY",
-                                            description = "장소만 정하는 모임은 출발지만 입력합니다.",
-                                            value = """
-                                                    {
-                                                      "departure": {
-                                                        "name": "회사",
-                                                        "address": "서울 강남구 테헤란로 123",
-                                                        "latitude": 37.498095,
-                                                        "longitude": 127.027610,
-                                                        "transportationMode": "PUBLIC_TRANSIT"
-                                                      }
-                                                    }
-                                                    """
-                                    )
-                            }
-                    )
-            )
-    )
-    @SecurityRequirement(name = "bearerAuth")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "방장 참여 완료"),
-            @ApiResponse(responseCode = "400", description = "모임 유형과 참여 입력 불일치"),
-            @ApiResponse(responseCode = "401", description = "Access Token 없음, 만료 또는 유효하지 않음"),
-            @ApiResponse(responseCode = "403", description = "모임을 생성한 방장이 아님"),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "meetingId에 해당하는 모임 없음",
-                    content = @Content(examples = @ExampleObject(value = """
-                            {
-                              "code": "MEETING_NOT_FOUND",
-                              "status": 404
-                            }
-                            """))
-            ),
-            @ApiResponse(responseCode = "409", description = "모임 참여 마감")
-    })
-    public HostParticipationResponse completeHostParticipation(
-            @PathVariable Long meetingId,
-            @Parameter(hidden = true) @CurrentMember AuthenticatedMember member,
-            @Valid @RequestBody HostParticipationRequest request
-    ) {
-        return HostParticipationResponse.from(meetingService.completeHostParticipation(
-                meetingId,
-                member,
-                request.scheduleCandidateDates(),
-                request.toParticipationCommand()
-        ));
-    }
-
     @PostMapping("/invitations/{inviteCode}/guests")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "게스트 모임 참여",
             description = """
-                    방장 참여 완료 응답의 inviteCode를 경로 변수에 넣어, 해당 모임에 게스트 참여자를 생성합니다.<br>
+                    모임 생성 응답의 inviteCode를 경로 변수에 넣어, 해당 모임에 게스트 참여자를 생성합니다.<br>
                     닉네임, 비밀번호와 모임 유형에 맞는 일정 또는 출발지 정보를 한 번에 저장합니다.
                     일정 조율 모임은 scheduleInputType에 맞춰 scheduleResponse.availableDates 또는 scheduleResponse.availableTimeRanges를 입력하고,
                     장소 조율 모임은 departure를 필수로 입력해야 합니다.
+                    게스트 참여에는 Bearer Access Token을 사용하지 않습니다.
                     게스트 재입장/수정 인증은 정책 확정 후 함께 보완할 예정입니다.
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -798,8 +720,8 @@ public class MeetingController {
                             mediaType = "application/json",
                             examples = {
                                     @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_1",
-                                            description = "모임 생성의 SCHEDULE_AND_PLACE 예시와 연결됩니다. 5개 후보일과 17:00~23:00 범위 안에서 여러 날짜·시간대를 선택한 첫 번째 게스트 참여 예시입니다.",
+                                            name = "SCHEDULE_AND_PLACE_DATE_AND_TIME",
+                                            description = "모임 생성의 SCHEDULE_AND_PLACE_DATE_AND_TIME 예시와 연결됩니다. 생성된 후보일과 17:00~23:00 범위 안에서 가능한 날짜·시간대를 선택합니다.",
                                             value = """
                                             {
                                               "nickname": "민지 친구 1",
@@ -815,11 +737,6 @@ public class MeetingController {
                                                   "candidateDate": "2026-07-11",
                                                   "startTime": "20:00",
                                                   "endTime": "23:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-12",
-                                                  "startTime": "17:00",
-                                                  "endTime": "19:00"
                                                 }
                                                 ]
                                               },
@@ -834,30 +751,14 @@ public class MeetingController {
                                             """
                                     ),
                                     @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_2",
-                                            description = "같은 모임에 사용할 두 번째 게스트 참여 예시입니다. 첫 번째 예시와 겹치는 시간과 겹치지 않는 시간을 함께 넣어 추천 결과를 비교할 수 있습니다.",
+                                            name = "SCHEDULE_AND_PLACE_DATE_ONLY",
+                                            description = "날짜와 장소를 함께 정하는 모임입니다. 방장이 만든 후보 날짜 중 가능한 날짜와 출발지를 입력합니다.",
                                             value = """
                                             {
                                               "nickname": "민지 친구 2",
                                               "password": "moyeo2026!",
                                               "scheduleResponse": {
-                                                "availableTimeRanges": [
-                                                {
-                                                  "candidateDate": "2026-07-10",
-                                                  "startTime": "19:00",
-                                                  "endTime": "22:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-12",
-                                                  "startTime": "18:00",
-                                                  "endTime": "23:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-13",
-                                                  "startTime": "17:00",
-                                                  "endTime": "20:00"
-                                                }
-                                                ]
+                                                "availableDates": ["2026-07-10", "2026-07-11"]
                                               },
                                               "departure": {
                                                 "name": "집",
@@ -870,14 +771,29 @@ public class MeetingController {
                                             """
                                     ),
                                     @ExampleObject(
-                                            name = "SCHEDULE_ONLY",
-                                            description = "모임 생성의 SCHEDULE_ONLY 예시와 연결됩니다. 일정만 입력하고 departure는 포함하지 않습니다.",
+                                            name = "SCHEDULE_ONLY_DATE_ONLY",
+                                            description = "날짜만 정하는 일정 모임입니다. 방장이 만든 후보 날짜 중 가능한 날짜만 입력합니다.",
                                             value = """
                                             {
                                               "nickname": "민지 친구",
                                               "password": "moyeo2026!",
                                               "scheduleResponse": {
-                                                "availableDates": ["2026-07-10", "2026-07-13"]
+                                                "availableDates": ["2026-07-10", "2026-07-11"]
+                                              }
+                                            }
+                                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "SCHEDULE_ONLY_DATE_AND_TIME",
+                                            description = "일정과 시간을 정하는 일정 모임입니다. 방장이 만든 후보 날짜 안에서 가능한 시간대를 입력합니다.",
+                                            value = """
+                                            {
+                                              "nickname": "민지 친구 시간",
+                                              "password": "moyeo2026!",
+                                              "scheduleResponse": {
+                                                "availableTimeRanges": [
+                                                  {"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}
+                                                ]
                                               }
                                             }
                                             """
@@ -961,7 +877,7 @@ public class MeetingController {
     })
     public ParticipantJoinResponse joinGuest(
             @Parameter(
-                    description = "방장 참여 완료 응답의 inviteCode 값입니다.",
+                    description = "모임 생성 응답의 inviteCode 값입니다.",
                     example = "ABCD234567"
             )
             @PathVariable String inviteCode,
@@ -977,19 +893,20 @@ public class MeetingController {
     @Operation(
             summary = "로그인 회원 모임 참여",
             description = """
-                    방장 참여 완료 응답의 inviteCode를 경로 변수에 넣어 현재 로그인한 서비스 사용자를 모임 참여자로 생성합니다.<br>
+                    모임 생성 응답의 inviteCode를 경로 변수에 넣어 현재 로그인한 서비스 사용자를 모임 참여자로 생성합니다.<br>
                     회원 기본 닉네임과 다른 모임 안 표시 닉네임을 입력할 수 있습니다.
                     일정 조율 모임은 scheduleInputType에 맞춰 scheduleResponse.availableDates 또는 scheduleResponse.availableTimeRanges를 입력하고,
                     장소 조율 모임은 departure를 함께 입력해야 합니다.
                     로그인 회원은 Bearer Access Token으로 식별하므로 참여 비밀번호를 입력하지 않습니다.
+                    생성에 사용한 방장 토큰이 아니라 참여할 다른 회원의 Access Token을 사용해야 합니다.
                     """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
                                     @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_1",
-                                            description = "모임 생성의 SCHEDULE_AND_PLACE 예시와 연결됩니다. Authorize에서 Bearer Access Token을 설정한 뒤 5개 후보일과 17:00~23:00 범위 안에서 여러 날짜·시간대를 선택합니다.",
+                                            name = "SCHEDULE_AND_PLACE_DATE_AND_TIME",
+                                            description = "모임 생성의 SCHEDULE_AND_PLACE_DATE_AND_TIME 예시와 연결됩니다. 생성에 사용한 방장 토큰이 아닌 참여 회원의 Bearer Access Token을 설정하고, 생성된 후보일과 17:00~23:00 범위 안에서 가능한 날짜·시간대를 선택합니다.",
                                             value = """
                                             {
                                               "nickname": "민지 1",
@@ -1004,11 +921,6 @@ public class MeetingController {
                                                   "candidateDate": "2026-07-11",
                                                   "startTime": "17:00",
                                                   "endTime": "20:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-14",
-                                                  "startTime": "20:00",
-                                                  "endTime": "23:00"
                                                 }
                                                 ]
                                               },
@@ -1023,29 +935,13 @@ public class MeetingController {
                                             """
                                     ),
                                     @ExampleObject(
-                                            name = "SCHEDULE_AND_PLACE_2",
-                                            description = "같은 모임에 사용할 두 번째 로그인 회원 참여 예시입니다. 다른 참여 예시와 일부 시간만 겹치도록 구성되어 추천 후보 순서를 확인할 수 있습니다.",
+                                            name = "SCHEDULE_AND_PLACE_DATE_ONLY",
+                                            description = "날짜와 장소를 함께 정하는 모임입니다. 방장이 만든 후보 날짜 중 가능한 날짜와 출발지를 입력합니다.",
                                             value = """
                                             {
                                               "nickname": "민지 2",
                                               "scheduleResponse": {
-                                                "availableTimeRanges": [
-                                                {
-                                                  "candidateDate": "2026-07-10",
-                                                  "startTime": "18:00",
-                                                  "endTime": "21:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-12",
-                                                  "startTime": "19:00",
-                                                  "endTime": "22:00"
-                                                },
-                                                {
-                                                  "candidateDate": "2026-07-13",
-                                                  "startTime": "17:00",
-                                                  "endTime": "19:00"
-                                                }
-                                                ]
+                                                  "availableDates": ["2026-07-10", "2026-07-11"]
                                               },
                                               "departure": {
                                                 "name": "학교",
@@ -1058,13 +954,27 @@ public class MeetingController {
                                             """
                                     ),
                                     @ExampleObject(
-                                            name = "SCHEDULE_ONLY",
-                                            description = "모임 생성의 SCHEDULE_ONLY 예시와 연결됩니다. 일정만 입력하고 departure는 포함하지 않습니다.",
+                                            name = "SCHEDULE_ONLY_DATE_ONLY",
+                                            description = "날짜만 정하는 일정 모임입니다. 방장이 만든 후보 날짜 중 가능한 날짜만 입력합니다.",
                                             value = """
                                             {
                                               "nickname": "민지",
                                               "scheduleResponse": {
-                                                "availableDates": ["2026-07-10", "2026-07-14"]
+                                                "availableDates": ["2026-07-10", "2026-07-11"]
+                                              }
+                                            }
+                                            """
+                                    ),
+                                    @ExampleObject(
+                                            name = "SCHEDULE_ONLY_DATE_AND_TIME",
+                                            description = "일정과 시간을 정하는 일정 모임입니다. 방장이 만든 후보 날짜 안에서 가능한 시간대를 입력합니다.",
+                                            value = """
+                                            {
+                                              "nickname": "민지 시간",
+                                              "scheduleResponse": {
+                                                "availableTimeRanges": [
+                                                  {"candidateDate": "2026-07-10", "startTime": "18:00", "endTime": "20:00"}
+                                                ]
                                               }
                                             }
                                             """
@@ -1159,7 +1069,7 @@ public class MeetingController {
     public ParticipantJoinResponse joinMember(
             @Parameter(hidden = true) @CurrentMember AuthenticatedMember member,
             @Parameter(
-                    description = "방장 참여 완료 응답의 inviteCode 값입니다.",
+                    description = "모임 생성 응답의 inviteCode 값입니다.",
                     example = "ABCD234567"
             )
             @PathVariable String inviteCode,

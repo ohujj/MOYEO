@@ -142,8 +142,8 @@ Current meeting scope:
 - INV-02 participation input stores schedule availability for schedule-coordination meetings.
 - INV-02 participation input stores departure address, coordinates, and transportation mode for place-coordination meetings.
 - A participation save request replaces the participant's previous schedule availability slots.
-- Public pre-confirmation meeting views provide participation status, schedule candidates, and place recommendations.
-- Schedule candidates are calculated from saved availability slots and can be sorted by longest meeting time or earliest date; each request returns up to five candidates.
+- Public pre-confirmation meeting views provide participant lists, schedule candidates, and place recommendations.
+- Schedule candidates are calculated from saved availability slots and can be sorted by longest meeting time or earliest date; each request returns up to three candidates.
 - Middle-point place recommendations use saved departure coordinates and a temporary commercial-area catalog to return up to five straight-line-distance preview candidates.
 - Random place recommendations return up to five candidates from the temporary commercial-area catalog.
 

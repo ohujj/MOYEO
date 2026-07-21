@@ -2,10 +2,12 @@ package com.moyeo.controller.departure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moyeo.controller.meeting.CreateMeetingRequest;
+import com.moyeo.controller.meeting.SaveParticipationRequest;
 import com.moyeo.departure.DeparturePlaceSearchService;
 import com.moyeo.departure.DeparturePlaceType;
 import com.moyeo.domain.departure.DeparturePlaceSearchExecutionPath;
 import com.moyeo.domain.meeting.PlanningType;
+import com.moyeo.domain.meeting.TransportationMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -204,6 +205,15 @@ class DeparturePlaceSearchControllerTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                new SaveParticipationRequest.DepartureRequest(
+                        "company",
+                        "Seoul Gangnam",
+                        BigDecimal.valueOf(37.498095),
+                        BigDecimal.valueOf(127.027610),
+                        TransportationMode.PUBLIC_TRANSIT
+                ),
                 1440
         );
         String createResponse = mockMvc.perform(post("/api/meetings")
@@ -214,24 +224,6 @@ class DeparturePlaceSearchControllerTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        long meetingId = objectMapper.readTree(createResponse).get("meetingId").asLong();
-
-        String participationResponse = mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "departure", Map.of(
-                                        "name", "company",
-                                        "address", "Seoul Gangnam",
-                                        "latitude", 37.498095,
-                                        "longitude", 127.027610,
-                                        "transportationMode", "PUBLIC_TRANSIT"
-                                )
-                        ))))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(participationResponse).get("inviteCode").asText();
+        return objectMapper.readTree(createResponse).get("inviteCode").asText();
     }
 }

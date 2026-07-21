@@ -90,15 +90,19 @@ public class MeetingService {
     @Transactional
     public MeetingCreateResult createMeeting(
             AuthenticatedMember hostMember,
-            CreateMeetingCommand command
+            CreateMeetingCommand command,
+            List<LocalDate> scheduleCandidateDates,
+            SaveParticipationCommand participationCommand
     ) {
-        return createMeeting(hostMember, command, null);
+        return createMeeting(hostMember, command, scheduleCandidateDates, participationCommand, null);
     }
 
     @Transactional
     public MeetingCreateResult createMeeting(
             AuthenticatedMember hostMember,
             CreateMeetingCommand command,
+            List<LocalDate> scheduleCandidateDates,
+            SaveParticipationCommand participationCommand,
             MultipartFile coverImage
     ) {
         User hostUser = userRepository.findById(hostMember.userId())
@@ -123,46 +127,21 @@ public class MeetingService {
                 inviteCodeGenerator.generate()
         );
         Meeting savedMeeting = meetingRepository.saveAndFlush(meeting);
-        meetingParticipantRepository.saveAndFlush(
+        MeetingParticipant hostParticipant = meetingParticipantRepository.saveAndFlush(
                 MeetingParticipant.host(savedMeeting, hostUser)
         );
+        saveHostScheduleCandidates(savedMeeting, scheduleCandidateDates);
+        SaveParticipationCommand resolvedCommand = resolveHostCreationParticipationCommand(
+                savedMeeting,
+                scheduleCandidateDates,
+                participationCommand
+        );
+        saveParticipation(savedMeeting, hostParticipant, resolvedCommand);
 
         if (coverImage != null && !coverImage.isEmpty()) {
             saveCoverImage(savedMeeting, coverImage);
         }
         return MeetingCreateResult.from(savedMeeting);
-    }
-
-    @Transactional
-    public HostParticipationResult completeHostParticipation(
-            Long meetingId,
-            AuthenticatedMember member,
-            List<LocalDate> scheduleCandidateDates,
-        SaveParticipationCommand participationCommand
-    ) {
-        Meeting meeting = meetingRepository.findByIdForUpdate(meetingId)
-                .orElseThrow(() -> new MoyeoException(MeetingErrorCode.MEETING_NOT_FOUND));
-        if (!meeting.getHostUser().getId().equals(member.userId())) {
-            throw new MoyeoException(MeetingErrorCode.MEETING_HOST_PARTICIPATION_FORBIDDEN);
-        }
-
-        MeetingParticipant hostParticipant = meetingParticipantRepository
-                .findByMeetingIdAndUserId(meetingId, member.userId())
-                .orElseThrow(() -> new MoyeoException(MeetingErrorCode.MEETING_PARTICIPANT_NOT_FOUND));
-
-        if (isParticipationComplete(meeting, hostParticipant)) {
-            return HostParticipationResult.from(meeting);
-        }
-
-        validateJoinOpen(meeting);
-        saveHostScheduleCandidates(meeting, scheduleCandidateDates);
-        SaveParticipationCommand resolvedCommand = resolveHostParticipationCommand(
-                meeting,
-                scheduleCandidateDates,
-                participationCommand
-        );
-        saveParticipation(meeting, hostParticipant, resolvedCommand);
-        return HostParticipationResult.from(meeting);
     }
 
     @Transactional
@@ -257,42 +236,13 @@ public class MeetingService {
     public MeetingViewResult getMeetingView(String inviteCode) {
         Meeting meeting = findMeetingByInviteCode(inviteCode);
         List<MeetingParticipant> participants = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meeting.getId());
-        Set<Long> scheduleRespondedParticipantIds = switch (meeting.getScheduleInputType()) {
-            case DATE_ONLY -> meetingParticipantScheduleDateAvailabilityRepository
-                    .findAllByParticipantMeetingId(meeting.getId())
-                    .stream()
-                    .map(availability -> availability.getParticipant().getId())
-                    .collect(Collectors.toSet());
-            case DATE_AND_TIME -> meetingParticipantScheduleAvailabilityRepository
-                    .findAllByParticipantMeetingId(meeting.getId())
-                    .stream()
-                    .map(availability -> availability.getParticipant().getId())
-                    .collect(Collectors.toSet());
-            case NONE -> Set.of();
-        };
-
-        boolean requiresSchedule = meeting.getScheduleMode() == ScheduleMode.VOTE;
-        boolean requiresPlace = meeting.getPlaceMode() == PlaceMode.RECOMMEND;
-
-        List<MeetingViewResult.ParticipantStatus> participantStatuses = participants.stream()
-                .map(participant -> {
-                    boolean scheduleResponded = scheduleRespondedParticipantIds.contains(participant.getId());
-                    boolean placeResponded = hasDeparture(participant);
-                    boolean responseCompleted = (!requiresSchedule || scheduleResponded)
-                            && (!requiresPlace || placeResponded);
-                    return new MeetingViewResult.ParticipantStatus(
-                            participant.getId(),
-                            participant.getNickname(),
-                            participant.getParticipantType().name(),
-                            scheduleResponded,
-                            placeResponded,
-                            responseCompleted
-                    );
-                })
+        List<MeetingViewResult.Participant> participantResults = participants.stream()
+                .map(participant -> new MeetingViewResult.Participant(
+                        participant.getId(),
+                        participant.getNickname(),
+                        participant.getParticipantType().name()
+                ))
                 .toList();
-        long respondedParticipantCount = participantStatuses.stream()
-                .filter(MeetingViewResult.ParticipantStatus::responseCompleted)
-                .count();
 
         return new MeetingViewResult(
                 meeting.getId(),
@@ -308,9 +258,7 @@ public class MeetingService {
                 participants.size(),
                 meeting.getDeadlineAt(),
                 remainingMinutes(meeting.getDeadlineAt()),
-                respondedParticipantCount,
-                responseRate(respondedParticipantCount, participants.size()),
-                participantStatuses
+                participantResults
         );
     }
 
@@ -333,25 +281,18 @@ public class MeetingService {
                 ));
 
         Comparator<ScheduleViewResult.Candidate> comparator = scheduleCandidateComparator(resolvedSort);
-        List<ScheduleViewResult.Candidate> candidates = mergeConsecutiveScheduleCandidates(participantsBySlot, participantCount)
+        List<ScheduleViewResult.Candidate> candidates = mergeConsecutiveScheduleCandidates(participantsBySlot)
                 .stream()
                 .sorted(comparator)
-                .limit(5)
+                .limit(3)
                 .toList();
-
-        long respondedParticipantCount = availabilities.stream()
-                .map(availability -> availability.getParticipant().getId())
-                .distinct()
-                .count();
 
         return new ScheduleViewResult(
                 meeting.getId(),
                 meeting.getScheduleInputType().name(),
                 resolvedSort,
                 participantCount,
-                respondedParticipantCount,
-                candidates,
-                candidates.isEmpty() ? "겹치는 시간이 없어요." : null
+                candidates
         );
     }
 
@@ -378,28 +319,21 @@ public class MeetingService {
                         .thenComparing(Map.Entry::getKey);
         List<ScheduleViewResult.Candidate> candidates = participantsByDate.entrySet().stream()
                 .sorted(comparator)
-                .limit(5)
+                .limit(3)
                 .map(entry -> new ScheduleViewResult.Candidate(
                         entry.getKey(),
                         null,
                         null,
-                        entry.getValue().size(),
-                        participantCount
+                        entry.getValue().size()
                 ))
                 .toList();
-        long respondedParticipantCount = availabilities.stream()
-                .map(availability -> availability.getParticipant().getId())
-                .distinct()
-                .count();
 
         return new ScheduleViewResult(
                 meeting.getId(),
                 meeting.getScheduleInputType().name(),
                 resolvedSort,
                 participantCount,
-                respondedParticipantCount,
-                candidates,
-                candidates.isEmpty() ? "가능한 날짜가 없어요." : null
+                candidates
         );
     }
 
@@ -412,12 +346,11 @@ public class MeetingService {
         List<MeetingParticipant> coordinateParticipants = departureParticipants.stream()
                 .filter(this::hasCoordinates)
                 .toList();
-        List<PlaceViewResult.ParticipantDepartureStatus> participantStatuses = participants.stream()
-                .map(participant -> new PlaceViewResult.ParticipantDepartureStatus(
+        List<PlaceViewResult.ParticipantDeparture> participantResults = participants.stream()
+                .map(participant -> new PlaceViewResult.ParticipantDeparture(
                         participant.getId(),
                         participant.getNickname(),
                         participant.getParticipantType().name(),
-                        hasDeparture(participant),
                         participant.getDepartureName(),
                         participant.getDepartureAddress(),
                         participant.getTransportationMode() != null ? participant.getTransportationMode().name() : null
@@ -428,7 +361,7 @@ public class MeetingService {
                 ? meeting.getPlaceRecommendationStrategy().name()
                 : null;
         if (meeting.getPlaceMode() != PlaceMode.RECOMMEND || meeting.getPlaceRecommendationStrategy() == null) {
-            return emptyPlaceView(meeting, participants.size(), departureParticipants.size(), participantStatuses, strategy);
+            return emptyPlaceView(meeting, participants.size(), participantResults, strategy);
         }
 
         if (meeting.getPlaceRecommendationStrategy() == PlaceRecommendationStrategy.RANDOM) {
@@ -446,18 +379,15 @@ public class MeetingService {
                     "RANDOM_CATALOG_PREVIEW",
                     null,
                     participants.size(),
-                    departureParticipants.size(),
-                    participantStatuses,
-                    recommendations,
-                    recommendations.isEmpty() ? "추천할 장소가 없어요." : null
+                    participantResults,
+                    recommendations
             );
         }
 
         if (coordinateParticipants.isEmpty()) {
             return new PlaceViewResult(
                     meeting.getId(), strategy, "COORDINATES_PENDING", null, participants.size(),
-                    departureParticipants.size(), participantStatuses, List.of(),
-                    "No submitted departure coordinates are available."
+                    participantResults, List.of()
             );
         }
 
@@ -482,10 +412,8 @@ public class MeetingService {
                 "STRAIGHT_LINE_PREVIEW",
                 center,
                 participants.size(),
-                departureParticipants.size(),
-                participantStatuses,
-                recommendations,
-                recommendations.isEmpty() ? "추천할 장소가 없어요." : null
+                participantResults,
+                recommendations
         );
     }
 
@@ -643,15 +571,6 @@ public class MeetingService {
         return Math.max(0, ChronoUnit.MINUTES.between(LocalDateTime.now(), deadlineAt));
     }
 
-    private double responseRate(long respondedParticipantCount, long participantCount) {
-        if (participantCount == 0) {
-            return 0.0;
-        }
-        return BigDecimal.valueOf((double) respondedParticipantCount / participantCount)
-                .setScale(4, RoundingMode.HALF_UP)
-                .doubleValue();
-    }
-
     private String resolveScheduleSort(String sort) {
         if ("LONGEST_MEETING".equals(sort) || "EARLIEST_DATE".equals(sort)) {
             return sort;
@@ -660,8 +579,7 @@ public class MeetingService {
     }
 
     private List<ScheduleViewResult.Candidate> mergeConsecutiveScheduleCandidates(
-            Map<ScheduleSlot, Set<Long>> participantsBySlot,
-            long participantCount
+            Map<ScheduleSlot, Set<Long>> participantsBySlot
     ) {
         List<ScheduleSlotAvailability> slots = participantsBySlot.entrySet().stream()
                 .map(entry -> new ScheduleSlotAvailability(entry.getKey(), entry.getValue()))
@@ -687,11 +605,11 @@ public class MeetingService {
                 );
                 continue;
             }
-            candidates.add(toScheduleCandidate(currentSlot, currentParticipantIds, participantCount));
+            candidates.add(toScheduleCandidate(currentSlot, currentParticipantIds));
             currentSlot = next.slot();
             currentParticipantIds = next.participantIds();
         }
-        candidates.add(toScheduleCandidate(currentSlot, currentParticipantIds, participantCount));
+        candidates.add(toScheduleCandidate(currentSlot, currentParticipantIds));
         return candidates;
     }
 
@@ -724,15 +642,13 @@ public class MeetingService {
 
     private ScheduleViewResult.Candidate toScheduleCandidate(
             ScheduleSlot slot,
-            Set<Long> participantIds,
-            long participantCount
+            Set<Long> participantIds
     ) {
         return new ScheduleViewResult.Candidate(
                 slot.candidateDate(),
                 slot.startTime(),
                 slot.endTime(),
-                participantIds.size(),
-                participantCount
+                participantIds.size()
         );
     }
 
@@ -752,8 +668,7 @@ public class MeetingService {
     private PlaceViewResult emptyPlaceView(
             Meeting meeting,
             long participantCount,
-            long departureRespondedParticipantCount,
-            List<PlaceViewResult.ParticipantDepartureStatus> participantStatuses,
+            List<PlaceViewResult.ParticipantDeparture> participantResults,
             String strategy
     ) {
         return new PlaceViewResult(
@@ -762,10 +677,8 @@ public class MeetingService {
                 strategy != null ? "STRAIGHT_LINE_PREVIEW" : null,
                 null,
                 participantCount,
-                departureRespondedParticipantCount,
-                participantStatuses,
-                List.of(),
-                "추천할 장소가 없어요."
+                participantResults,
+                List.of()
         );
     }
 
@@ -865,17 +778,7 @@ public class MeetingService {
         meetingScheduleCandidateRepository.saveAllAndFlush(candidates);
     }
 
-    private boolean isParticipationComplete(Meeting meeting, MeetingParticipant participant) {
-        boolean scheduleComplete = switch (meeting.getScheduleInputType()) {
-            case DATE_ONLY -> meetingParticipantScheduleDateAvailabilityRepository.countByParticipantId(participant.getId()) > 0;
-            case DATE_AND_TIME -> meetingParticipantScheduleAvailabilityRepository.countByParticipantId(participant.getId()) > 0;
-            case NONE -> true;
-        };
-        boolean placeComplete = meeting.getPlaceMode() != PlaceMode.RECOMMEND || hasDeparture(participant);
-        return scheduleComplete && placeComplete;
-    }
-
-    private SaveParticipationCommand resolveHostParticipationCommand(
+    private SaveParticipationCommand resolveHostCreationParticipationCommand(
             Meeting meeting,
             List<LocalDate> scheduleCandidateDates,
             SaveParticipationCommand command

@@ -179,9 +179,9 @@ Ref fk_departure_place_search_candidates_search: departure_place_search_candidat
 - `meetings.deadline_at` is calculated by the server from request `deadlineMinutes`, which is currently accepted in 10-minute units up to 72 hours.
 - `meetings.available_start_time` and `meetings.available_end_time` are used only for `DATE_AND_TIME`, are shared by all schedule voting candidate dates, and are currently accepted in 1-hour units. They remain null for `DATE_ONLY` and `NONE`.
 - `meeting_schedule_candidates` stores variable-length date candidates for schedule voting.
-- `meeting_participant_schedule_availabilities` stores participant-selected availability slots. The host row remains empty at creation and receives the host-selected ranges when the post-creation host participation flow completes.
-- `meeting_participant_schedule_date_availabilities` stores the selected dates for `DATE_ONLY`. The host's candidate dates are also saved as the host's available dates when host participation completes.
-- `meeting_participants` stores host, logged-in member, and guest participants. Creation inserts the host row without response details; the host participation flow later fills its schedule availability and departure snapshot.
+- `meeting_participant_schedule_availabilities` stores participant-selected availability slots. For `DATE_AND_TIME`, meeting creation saves the host-selected ranges in the same transaction as the meeting and host row.
+- `meeting_participant_schedule_date_availabilities` stores the selected dates for `DATE_ONLY`. Meeting creation also saves the host's candidate dates as the host's available dates.
+- `meeting_participants` stores host, logged-in member, and guest participants. Creation inserts the host row and its required schedule/departure response data atomically.
 - `meeting_participants.departure_name`, `departure_address`, `departure_latitude`, `departure_longitude`, and `transportation_mode` store host and participant departure snapshots for place coordination.
 - Guest `meeting_participants.nickname` duplication is rejected only against other guests in the same meeting by the join application logic; the table does not keep a general nickname unique constraint.
 - `meeting_participants.user_id` is unique only inside a meeting when a participant is linked to a service user.

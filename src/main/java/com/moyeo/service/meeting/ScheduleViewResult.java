@@ -9,17 +9,14 @@ public record ScheduleViewResult(
         String scheduleInputType,
         String sort,
         long participantCount,
-        long respondedParticipantCount,
-        List<Candidate> candidates,
-        String emptyMessage
+        List<Candidate> candidates
 ) {
 
     public record Candidate(
             LocalDate candidateDate,
             LocalTime startTime,
             LocalTime endTime,
-            long availableParticipantCount,
-            long totalParticipantCount
+            long availableParticipantCount
     ) {
     }
 }

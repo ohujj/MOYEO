@@ -26,7 +26,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import javax.imageio.ImageIO;
@@ -74,7 +73,7 @@ class MeetingControllerTest {
     private MeetingCoverStorage meetingCoverStorage;
 
     @Test
-    void createMeetingReturnsMeetingIdOnly() throws Exception {
+    void createMeetingReturnsMeetingAndInvitationInformation() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost1", "host1");
 
         mockMvc.perform(post("/api/meetings")
@@ -84,9 +83,9 @@ class MeetingControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.meetingId").isNumber())
-                .andExpect(jsonPath("$.*").value(org.hamcrest.Matchers.hasSize(1)))
-                .andExpect(jsonPath("$.inviteCode").doesNotExist())
-                .andExpect(jsonPath("$.invitePath").doesNotExist());
+                .andExpect(jsonPath("$.*").value(org.hamcrest.Matchers.hasSize(3)))
+                .andExpect(jsonPath("$.inviteCode").isString())
+                .andExpect(jsonPath("$.invitePath").isString());
     }
 
     @Test
@@ -151,6 +150,11 @@ class MeetingControllerTest {
                                 "name", "place-simple",
                                 "maxParticipants", 6,
                                 "planningType", "PLACE_ONLY",
+                                "departure", Map.of(
+                                        "name", "company",
+                                        "address", "Seoul",
+                                        "transportationMode", "PUBLIC_TRANSIT"
+                                ),
                                 "deadlineMinutes", 1440
                         ))))
                 .andExpect(status().isCreated())
@@ -214,7 +218,7 @@ class MeetingControllerTest {
                 .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.meetingId").isNumber())
-                .andExpect(jsonPath("$.inviteCode").doesNotExist())
+                .andExpect(jsonPath("$.inviteCode").isString())
                 .andExpect(jsonPath("$.coverImageUrl").doesNotExist());
     }
 
@@ -245,7 +249,7 @@ class MeetingControllerTest {
     }
 
     @Test
-    void createScheduleMeetingLeavesHostParticipationPending() throws Exception {
+    void createScheduleMeetingStoresHostParticipationAtomically() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost35", "host35");
 
         String response = mockMvc.perform(post("/api/meetings")
@@ -259,60 +263,28 @@ class MeetingControllerTest {
 
         Long meetingId = objectMapper.readTree(response).get("meetingId").asLong();
         Long hostParticipantId = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meetingId).getFirst().getId();
-        assertThat(meetingParticipantScheduleAvailabilityRepository.countByParticipantId(hostParticipantId)).isZero();
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from meeting_schedule_candidates where meeting_id = ?",
-                Long.class,
-                meetingId
-        )).isZero();
-    }
-
-    @Test
-    void completeHostParticipationCreatesCandidateDatesAndReturnsInvitation() throws Exception {
-        String accessToken = signupAndGetAccessToken("meetinghost-participation", "host-participation");
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, defaultCreateMeetingRequest(6));
-
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(defaultHostParticipationRequest(
-                                defaultCreateMeetingRequest(6)
-                        ))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.meetingId").value(meetingId))
-                .andExpect(jsonPath("$.inviteCode").isString())
-                .andExpect(jsonPath("$.invitePath").isString())
-                .andExpect(jsonPath("$.*").value(org.hamcrest.Matchers.hasSize(3)));
-
-        Long hostParticipantId = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meetingId).getFirst().getId();
         assertThat(meetingParticipantScheduleAvailabilityRepository.countByParticipantId(hostParticipantId)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from meeting_schedule_candidates where meeting_id = ?",
                 Long.class,
                 meetingId
         )).isEqualTo(2L);
-        assertThat(meetingParticipantRepository.findById(hostParticipantId).orElseThrow().getDepartureName())
-                .isEqualTo("company");
     }
 
     @Test
-    void completeDateOnlyHostParticipationUsesCandidateDatesAsHostAvailability() throws Exception {
+    void createDateOnlyMeetingUsesCandidateDatesAsHostAvailability() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost-date-only-complete", "host-date-only-complete");
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, dateOnlyCreateMeetingRequest());
-
-        String response = mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
+        String response = mockMvc.perform(post("/api/meetings")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "scheduleCandidateDates", List.of("2026-07-01", "2026-07-02")
-                        ))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.meetingId").value(meetingId))
+                        .content(objectMapper.writeValueAsString(dateOnlyCreateMeetingRequest())))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.inviteCode").isString())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
+        Long meetingId = objectMapper.readTree(response).get("meetingId").asLong();
         Long hostParticipantId = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meetingId).getFirst().getId();
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from meeting_participant_schedule_date_availabilities where participant_id = ?",
@@ -330,88 +302,30 @@ class MeetingControllerTest {
     }
 
     @Test
-    void completeHostParticipationRejectsNonHost() throws Exception {
-        String hostToken = signupAndGetAccessToken("meetinghost-authority", "host-authority");
-        Long meetingId = createMeetingAndGetMeetingId(hostToken, defaultCreateMeetingRequest(6));
-        String otherMemberToken = signupAndGetAccessToken("meetinghost-authority-other", "other-member");
-
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
-                        .header("Authorization", "Bearer " + otherMemberToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(defaultHostParticipationRequest(
-                                defaultCreateMeetingRequest(6)
-                        ))))
-                .andExpect(status().isForbidden())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.code").value("MEETING_HOST_PARTICIPATION_FORBIDDEN"));
-    }
-
-    @Test
-    void completeHostParticipationReturnsNotFoundForUnknownMeetingId() throws Exception {
-        String accessToken = signupAndGetAccessToken("meetinghost-not-found", "host-not-found");
-
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", 999_999_999L)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.code").value("MEETING_NOT_FOUND"));
-    }
-
-    @Test
-    void completeHostParticipationRollsBackCandidateDatesWhenAvailabilityIsInvalid() throws Exception {
+    void createMeetingRollsBackWhenHostAvailabilityIsInvalid() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost-rollback", "host-rollback");
-        CreateMeetingRequest request = new CreateMeetingRequest(
-                "rollback",
-                null,
-                6,
-                com.moyeo.domain.meeting.PlanningType.SCHEDULE_ONLY,
-                ScheduleInputType.DATE_AND_TIME,
-                LocalTime.of(9, 0),
-                LocalTime.of(18, 0),
-                1440
-        );
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
+        Long meetingCount = jdbcTemplate.queryForObject("select count(*) from meetings", Long.class);
 
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
+        mockMvc.perform(post("/api/meetings")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "rollback",
+                                "maxParticipants", 6,
+                                "planningType", "SCHEDULE_ONLY",
+                                "scheduleInputType", "DATE_AND_TIME",
+                                "availableStartTime", "09:00",
+                                "availableEndTime", "18:00",
                                 "scheduleCandidateDates", List.of("2026-07-01"),
                                 "scheduleResponse", Map.of(
                                         "availableTimeRanges", List.of(scheduleAvailability("08:00", "09:00"))
-                                )
+                                ),
+                                "deadlineMinutes", 1440
                         ))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_MEETING_PARTICIPATION_INPUT"));
 
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from meeting_schedule_candidates where meeting_id = ?",
-                Long.class,
-                meetingId
-        )).isZero();
-    }
-
-    @Test
-    void completeHostParticipationRetryReturnsSameInvitationWithoutModification() throws Exception {
-        String accessToken = signupAndGetAccessToken("meetinghost-retry", "host-retry");
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, defaultCreateMeetingRequest(6));
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                accessToken,
-                defaultHostParticipationRequest(defaultCreateMeetingRequest(6))
-        );
-
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.inviteCode").value(inviteCode));
-
-        Long hostParticipantId = meetingParticipantRepository.findAllByMeetingIdOrderByIdAsc(meetingId).getFirst().getId();
-        assertThat(meetingParticipantScheduleAvailabilityRepository.countByParticipantId(hostParticipantId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from meetings", Long.class)).isEqualTo(meetingCount);
     }
 
     @Test
@@ -467,40 +381,36 @@ class MeetingControllerTest {
     }
 
     @Test
-    void hostParticipationAllowsMoreThanTwentyOneScheduleCandidateDates() throws Exception {
+    void createMeetingAllowsMoreThanTwentyOneScheduleCandidateDates() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost-many-dates", "host-many-dates");
         List<LocalDate> candidateDates = java.util.stream.IntStream.range(0, 22)
                 .mapToObj(dayOffset -> LocalDate.of(2026, 7, 1).plusDays(dayOffset))
                 .toList();
-        CreateMeetingRequest request = new CreateMeetingRequest(
-                "weekend",
-                "dinner",
-                6,
-                com.moyeo.domain.meeting.PlanningType.SCHEDULE_ONLY,
-                ScheduleInputType.DATE_AND_TIME,
-                LocalTime.of(18, 0),
-                LocalTime.of(22, 0),
-                1440
-        );
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
 
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
+        mockMvc.perform(post("/api/meetings")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "weekend",
+                                "maxParticipants", 6,
+                                "planningType", "SCHEDULE_ONLY",
+                                "scheduleInputType", "DATE_AND_TIME",
+                                "availableStartTime", "18:00",
+                                "availableEndTime", "22:00",
                                 "scheduleCandidateDates", candidateDates,
                                 "scheduleResponse", Map.of(
                                         "availableTimeRanges", List.of(scheduleAvailability("18:00", "19:00"))
-                                )
+                                ),
+                                "deadlineMinutes", 1440
                         ))))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 
     @Test
     void createMeetingRejectsNonHourUnitScheduleTime() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost10", "host10");
 
-        CreateMeetingRequest request = new CreateMeetingRequest(
+        CreateMeetingRequest request = createMeetingRequest(
                 "weekend",
                 "dinner",
                 6,
@@ -524,7 +434,7 @@ class MeetingControllerTest {
     void createMeetingRejectsNonTenMinuteDeadline() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost11", "host11");
 
-        CreateMeetingRequest request = new CreateMeetingRequest(
+        CreateMeetingRequest request = createMeetingRequest(
                 "weekend",
                 "dinner",
                 6,
@@ -545,25 +455,18 @@ class MeetingControllerTest {
     }
 
     @Test
-    void hostParticipationRejectsMiddlePointWithoutDeparture() throws Exception {
+    void createMeetingRejectsMiddlePointWithoutDeparture() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost17", "host17");
 
-        CreateMeetingRequest request = new CreateMeetingRequest(
-                "weekend",
-                "dinner",
-                6,
-                com.moyeo.domain.meeting.PlanningType.PLACE_ONLY,
-                null,
-                null,
-                null,
-                1440
-        );
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
-
-        mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
+        mockMvc.perform(post("/api/meetings")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "weekend",
+                                "maxParticipants", 6,
+                                "planningType", "PLACE_ONLY",
+                                "deadlineMinutes", 1440
+                        ))))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("INVALID_MEETING_PARTICIPATION_INPUT"));
@@ -573,7 +476,7 @@ class MeetingControllerTest {
     void createMeetingSupportsPlaceOnlyPlanning() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost13", "host13");
 
-        CreateMeetingRequest request = new CreateMeetingRequest(
+        CreateMeetingRequest request = createMeetingRequest(
                 "weekend",
                 "dinner",
                 6,
@@ -598,34 +501,30 @@ class MeetingControllerTest {
     }
 
     @Test
-    void hostParticipationRemovesDuplicatedScheduleCandidateDatesAndSortsThem() throws Exception {
+    void createMeetingRemovesDuplicatedScheduleCandidateDatesAndSortsThem() throws Exception {
         String accessToken = signupAndGetAccessToken("meetinghost14", "host14");
 
-        CreateMeetingRequest request = new CreateMeetingRequest(
-                "weekend",
-                "dinner",
-                6,
-                com.moyeo.domain.meeting.PlanningType.SCHEDULE_ONLY,
-                ScheduleInputType.DATE_AND_TIME,
-                LocalTime.of(18, 0),
-                LocalTime.of(22, 0),
-                1440
-        );
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                accessToken,
-                Map.of(
-                        "scheduleCandidateDates", List.of(
-                                LocalDate.of(2026, 7, 2),
-                                LocalDate.of(2026, 7, 1),
-                                LocalDate.of(2026, 7, 1)
-                        ),
-                        "scheduleResponse", Map.of(
-                                "availableTimeRanges", List.of(scheduleAvailability("18:00", "19:00"))
-                        )
-                )
-        );
+        String response = mockMvc.perform(post("/api/meetings")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "weekend",
+                                "maxParticipants", 6,
+                                "planningType", "SCHEDULE_ONLY",
+                                "scheduleInputType", "DATE_AND_TIME",
+                                "availableStartTime", "18:00",
+                                "availableEndTime", "22:00",
+                                "scheduleCandidateDates", List.of("2026-07-02", "2026-07-01", "2026-07-01"),
+                                "scheduleResponse", Map.of(
+                                        "availableTimeRanges", List.of(scheduleAvailability("18:00", "19:00"))
+                                ),
+                                "deadlineMinutes", 1440
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String inviteCode = objectMapper.readTree(response).get("inviteCode").asText();
 
         mockMvc.perform(get("/api/meetings/invitations/{inviteCode}", inviteCode))
                 .andExpect(status().isOk())
@@ -1003,7 +902,7 @@ class MeetingControllerTest {
         String inviteCode = createMeetingAndGetInviteCode(
                 "meetinghost21",
                 "host21",
-                new CreateMeetingRequest(
+                createMeetingRequest(
                         "schedule",
                         "schedule only",
                         6,
@@ -1040,7 +939,7 @@ class MeetingControllerTest {
     }
 
     @Test
-    void getMeetingViewReturnsResponseProgressAndParticipantStatuses() throws Exception {
+    void getMeetingViewReturnsParticipantListWithoutRedundantResponseStatus() throws Exception {
         String inviteCode = createMeetingAndGetInviteCode("meetinghost29", "host29", 6);
         Long participantId = joinGuestAndGetParticipantId(inviteCode, "guest-view");
         saveDefaultParticipation(inviteCode, participantId, "09:00", "10:00");
@@ -1051,13 +950,13 @@ class MeetingControllerTest {
                 .andExpect(jsonPath("$.name").value("weekend-meeting"))
                 .andExpect(jsonPath("$.maxParticipants").value(6))
                 .andExpect(jsonPath("$.participantCount").value(2))
-                .andExpect(jsonPath("$.respondedParticipantCount").value(2))
-                .andExpect(jsonPath("$.responseRate").value(1.0))
+                .andExpect(jsonPath("$.respondedParticipantCount").doesNotExist())
+                .andExpect(jsonPath("$.responseRate").doesNotExist())
                 .andExpect(jsonPath("$.participants[0].participantType").value("HOST"))
-                .andExpect(jsonPath("$.participants[0].scheduleResponded").value(true))
-                .andExpect(jsonPath("$.participants[0].responseCompleted").value(true))
                 .andExpect(jsonPath("$.participants[1].nickname").value("guest-view"))
-                .andExpect(jsonPath("$.participants[1].responseCompleted").value(true));
+                .andExpect(jsonPath("$.participants[0].scheduleResponded").doesNotExist())
+                .andExpect(jsonPath("$.participants[0].placeResponded").doesNotExist())
+                .andExpect(jsonPath("$.participants[0].responseCompleted").doesNotExist());
     }
 
     @Test
@@ -1074,10 +973,11 @@ class MeetingControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.sort").value("LONGEST_MEETING"))
                 .andExpect(jsonPath("$.participantCount").value(3))
-                .andExpect(jsonPath("$.respondedParticipantCount").value(3))
+                .andExpect(jsonPath("$.respondedParticipantCount").doesNotExist())
                 .andExpect(jsonPath("$.candidates[0].candidateDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.candidates[0].startTime").value("09:00:00"))
                 .andExpect(jsonPath("$.candidates[0].availableParticipantCount").value(3))
+                .andExpect(jsonPath("$.candidates[0].totalParticipantCount").doesNotExist())
                 .andExpect(jsonPath("$.emptyMessage").doesNotExist());
     }
 
@@ -1134,17 +1034,107 @@ class MeetingControllerTest {
             assertThat(jsonExamples.has(exampleName)).isTrue();
             assertThat(multipartExamples.has(exampleName)).isTrue();
         });
+        assertThat(jsonExamples.path("SCHEDULE_AND_PLACE_DATE_AND_TIME").path("value").has("scheduleCandidateDates")).isTrue();
+        assertThat(jsonExamples.path("SCHEDULE_AND_PLACE_DATE_AND_TIME").path("value").has("scheduleResponse")).isTrue();
+        assertThat(jsonExamples.path("SCHEDULE_AND_PLACE_DATE_AND_TIME").path("value").has("departure")).isTrue();
+        assertThat(jsonExamples.path("SCHEDULE_ONLY_DATE_ONLY").path("value").has("scheduleCandidateDates")).isTrue();
+        assertThat(jsonExamples.path("PLACE_ONLY").path("value").has("departure")).isTrue();
+    }
+
+    @Test
+    void swaggerDocumentsSameFiveFlowsForGuestAndMemberJoinAndNoSeparateHostParticipation() throws Exception {
+        List<String> exampleNames = List.of(
+                "SCHEDULE_AND_PLACE_DATE_AND_TIME",
+                "SCHEDULE_AND_PLACE_DATE_ONLY",
+                "SCHEDULE_ONLY_DATE_AND_TIME",
+                "SCHEDULE_ONLY_DATE_ONLY",
+                "PLACE_ONLY"
+        );
+        var openApi = objectMapper.readTree(mockMvc.perform(get("/v3/api-docs"))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString());
+        var paths = openApi.path("paths");
+        assertThat(paths.has("/api/meetings/{meetingId}/participation")).isFalse();
+
+        var guestExamples = paths.path("/api/meetings/invitations/{inviteCode}/guests")
+                .path("post").path("requestBody").path("content")
+                .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+        var memberExamples = paths.path("/api/meetings/invitations/{inviteCode}/members")
+                .path("post").path("requestBody").path("content")
+                .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+        assertThat(guestExamples.size()).isEqualTo(exampleNames.size());
+        assertThat(memberExamples.size()).isEqualTo(exampleNames.size());
+        assertThat(exampleNames).allSatisfy(exampleName -> {
+            assertThat(guestExamples.has(exampleName)).isTrue();
+            assertThat(memberExamples.has(exampleName)).isTrue();
+        });
+    }
+
+    @Test
+    void swaggerExamplesCanCreateMeetingThenJoinGuestAndDifferentMember() throws Exception {
+        List<String> exampleNames = List.of(
+                "SCHEDULE_AND_PLACE_DATE_AND_TIME",
+                "SCHEDULE_AND_PLACE_DATE_ONLY",
+                "SCHEDULE_ONLY_DATE_AND_TIME",
+                "SCHEDULE_ONLY_DATE_ONLY",
+                "PLACE_ONLY"
+        );
+        var openApi = objectMapper.readTree(mockMvc.perform(get("/v3/api-docs"))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString());
+        var paths = openApi.path("paths");
+        var creationExamples = paths.path("/api/meetings").path("post")
+                .path("requestBody").path("content")
+                .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+        var guestExamples = paths.path("/api/meetings/invitations/{inviteCode}/guests").path("post")
+                .path("requestBody").path("content")
+                .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+        var memberExamples = paths.path("/api/meetings/invitations/{inviteCode}/members").path("post")
+                .path("requestBody").path("content")
+                .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+
+        for (int index = 0; index < exampleNames.size(); index++) {
+            String exampleName = exampleNames.get(index);
+            String hostToken = signupAndGetAccessToken("swagger-host-" + index, "swagger-host-" + index);
+            String memberToken = signupAndGetAccessToken("swagger-member-" + index, "swagger-member-" + index);
+            String createResponse = mockMvc.perform(post("/api/meetings")
+                            .header("Authorization", "Bearer " + hostToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(creationExamples.path(exampleName).path("value").toString()))
+                    .andExpect(status().isCreated())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            String inviteCode = objectMapper.readTree(createResponse).path("inviteCode").asText();
+
+            mockMvc.perform(post("/api/meetings/invitations/{inviteCode}/guests", inviteCode)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(guestExamples.path(exampleName).path("value").toString()))
+                    .andExpect(status().isCreated());
+
+            mockMvc.perform(post("/api/meetings/invitations/{inviteCode}/members", inviteCode)
+                            .header("Authorization", "Bearer " + memberToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(memberExamples.path(exampleName).path("value").toString()))
+                    .andExpect(status().isCreated());
+
+            if ("SCHEDULE_AND_PLACE_DATE_AND_TIME".equals(exampleName)) {
+                mockMvc.perform(get("/api/meetings/invitations/{inviteCode}/view/schedules", inviteCode)
+                                .param("sort", "LONGEST_MEETING"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.candidates.length()").value(3));
+            }
+        }
     }
 
     @Test
     void dateOnlyParticipantSelectsDatesAndScheduleViewAggregatesByDate() throws Exception {
         String hostToken = signupAndGetAccessToken("meetinghost-date-view", "host-date-view");
-        Long meetingId = createMeetingAndGetMeetingId(hostToken, dateOnlyCreateMeetingRequest());
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                hostToken,
-                Map.of("scheduleCandidateDates", List.of("2026-07-01", "2026-07-02"))
-        );
+        String inviteCode = createMeetingAndGetInviteCode(hostToken, dateOnlyCreateMeetingRequest());
 
         mockMvc.perform(post("/api/meetings/invitations/{inviteCode}/guests", inviteCode)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1160,15 +1150,15 @@ class MeetingControllerTest {
         mockMvc.perform(get("/api/meetings/invitations/{inviteCode}/view", inviteCode))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduleInputType").value("DATE_ONLY"))
-                .andExpect(jsonPath("$.respondedParticipantCount").value(2))
-                .andExpect(jsonPath("$.participants[1].scheduleResponded").value(true));
+                .andExpect(jsonPath("$.participantCount").value(2))
+                .andExpect(jsonPath("$.respondedParticipantCount").doesNotExist());
 
         mockMvc.perform(get("/api/meetings/invitations/{inviteCode}/view/schedules", inviteCode)
                         .param("sort", "LONGEST_MEETING"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduleInputType").value("DATE_ONLY"))
                 .andExpect(jsonPath("$.participantCount").value(2))
-                .andExpect(jsonPath("$.respondedParticipantCount").value(2))
+                .andExpect(jsonPath("$.respondedParticipantCount").doesNotExist())
                 .andExpect(jsonPath("$.candidates[0].candidateDate").value("2026-07-02"))
                 .andExpect(jsonPath("$.candidates[0].startTime").doesNotExist())
                 .andExpect(jsonPath("$.candidates[0].endTime").doesNotExist())
@@ -1188,22 +1178,22 @@ class MeetingControllerTest {
                 ScheduleInputType.DATE_ONLY,
                 null,
                 null,
+                List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2)),
+                null,
+                new SaveParticipationRequest.DepartureRequest(
+                        "host-company",
+                        "Seoul Gangnam",
+                        BigDecimal.valueOf(37.498095),
+                        BigDecimal.valueOf(127.027610),
+                        com.moyeo.domain.meeting.TransportationMode.PUBLIC_TRANSIT
+                ),
                 1440
         );
-        Long meetingId = createMeetingAndGetMeetingId(hostToken, request);
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                hostToken,
-                Map.of(
-                        "scheduleCandidateDates", List.of("2026-07-01", "2026-07-02"),
-                        "departure", Map.of(
-                                "name", "host-company",
-                                "address", "Seoul Gangnam",
-                                "latitude", 37.498095,
-                                "longitude", 127.027610,
-                                "transportationMode", "PUBLIC_TRANSIT"
-                        )
-                )
+        String inviteCode = createMeetingAndGetInviteCode(hostToken, request);
+        Long meetingId = jdbcTemplate.queryForObject(
+                "select id from meetings where invite_code = ?",
+                Long.class,
+                inviteCode
         );
 
         mockMvc.perform(post("/api/meetings/invitations/{inviteCode}/guests", inviteCode)
@@ -1251,18 +1241,19 @@ class MeetingControllerTest {
         mockMvc.perform(get("/api/meetings/invitations/{inviteCode}/view", inviteCode))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduleInputType").value("DATE_ONLY"))
-                .andExpect(jsonPath("$.respondedParticipantCount").value(2))
-                .andExpect(jsonPath("$.responseRate").value(1.0));
+                .andExpect(jsonPath("$.participantCount").value(2))
+                .andExpect(jsonPath("$.respondedParticipantCount").doesNotExist())
+                .andExpect(jsonPath("$.responseRate").doesNotExist());
     }
 
     @Test
     void dateOnlyParticipationRejectsDateOutsideHostCandidates() throws Exception {
         String hostToken = signupAndGetAccessToken("meetinghost-date-invalid", "host-date-invalid");
-        Long meetingId = createMeetingAndGetMeetingId(hostToken, dateOnlyCreateMeetingRequest());
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                hostToken,
-                Map.of("scheduleCandidateDates", List.of("2026-07-01", "2026-07-02"))
+        String inviteCode = createMeetingAndGetInviteCode(hostToken, dateOnlyCreateMeetingRequest());
+        Long meetingId = jdbcTemplate.queryForObject(
+                "select id from meetings where invite_code = ?",
+                Long.class,
+                inviteCode
         );
 
         mockMvc.perform(post("/api/meetings/invitations/{inviteCode}/guests", inviteCode)
@@ -1323,8 +1314,8 @@ class MeetingControllerTest {
                 .andExpect(jsonPath("$.recommendationBasis").value("STRAIGHT_LINE_PREVIEW"))
                 .andExpect(jsonPath("$.center.latitude").value(37.498095))
                 .andExpect(jsonPath("$.participantCount").value(2))
-                .andExpect(jsonPath("$.departureRespondedParticipantCount").value(2))
-                .andExpect(jsonPath("$.participants[0].departureResponded").value(true))
+                .andExpect(jsonPath("$.departureRespondedParticipantCount").doesNotExist())
+                .andExpect(jsonPath("$.participants[0].departureResponded").doesNotExist())
                 .andExpect(jsonPath("$.recommendations[0].rank").value(1))
                 .andExpect(jsonPath("$.recommendations[0].areaName").isString())
                 .andExpect(jsonPath("$.recommendations[0].averageStraightDistanceMeters").isNumber());
@@ -1340,26 +1331,26 @@ class MeetingControllerTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                new SaveParticipationRequest.DepartureRequest(
+                        "company",
+                        "Seoul Gangnam",
+                        null,
+                        null,
+                        com.moyeo.domain.meeting.TransportationMode.PUBLIC_TRANSIT
+                ),
                 1440
         );
         String accessToken = signupAndGetAccessToken("meetinghost-coordinate-pending", "host-coordinate-pending");
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
-        String inviteCode = completeHostParticipationAndGetInviteCode(
-                meetingId,
-                accessToken,
-                Map.of("departure", Map.of(
-                        "name", "company",
-                        "address", "Seoul Gangnam",
-                        "transportationMode", "PUBLIC_TRANSIT"
-                ))
-        );
+        String inviteCode = createMeetingAndGetInviteCode(accessToken, request);
 
         mockMvc.perform(get("/api/meetings/invitations/{inviteCode}/view/places", inviteCode))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.placeRecommendationStrategy").value("MIDDLE_POINT"))
                 .andExpect(jsonPath("$.recommendationBasis").value("COORDINATES_PENDING"))
                 .andExpect(jsonPath("$.center").doesNotExist())
-                .andExpect(jsonPath("$.departureRespondedParticipantCount").value(1))
+                .andExpect(jsonPath("$.departureRespondedParticipantCount").doesNotExist())
                 .andExpect(jsonPath("$.recommendations").isEmpty());
     }
 
@@ -1389,12 +1380,15 @@ class MeetingControllerTest {
     }
 
     private String createMeetingAndGetInviteCode(String accessToken, CreateMeetingRequest request) throws Exception {
-        Long meetingId = createMeetingAndGetMeetingId(accessToken, request);
-        return completeHostParticipationAndGetInviteCode(
-                meetingId,
-                accessToken,
-                defaultHostParticipationRequest(request)
-        );
+        String response = mockMvc.perform(post("/api/meetings")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("inviteCode").asText();
     }
 
     private Long createMeetingAndGetMeetingId(String accessToken, CreateMeetingRequest request) throws Exception {
@@ -1410,24 +1404,65 @@ class MeetingControllerTest {
         return objectMapper.readTree(response).get("meetingId").asLong();
     }
 
-    private String completeHostParticipationAndGetInviteCode(
-            Long meetingId,
-            String accessToken,
-            Map<String, Object> request
-    ) throws Exception {
-        String response = mockMvc.perform(put("/api/meetings/{meetingId}/participation", meetingId)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response).get("inviteCode").asText();
+    private CreateMeetingRequest createMeetingRequest(
+            String name,
+            String description,
+            int maxParticipants,
+            com.moyeo.domain.meeting.PlanningType planningType,
+            ScheduleInputType scheduleInputType,
+            LocalTime availableStartTime,
+            LocalTime availableEndTime,
+            int deadlineMinutes
+    ) {
+        boolean requiresSchedule = planningType == com.moyeo.domain.meeting.PlanningType.SCHEDULE_ONLY
+                || planningType == com.moyeo.domain.meeting.PlanningType.SCHEDULE_AND_PLACE;
+        boolean requiresPlace = planningType == com.moyeo.domain.meeting.PlanningType.PLACE_ONLY
+                || planningType == com.moyeo.domain.meeting.PlanningType.SCHEDULE_AND_PLACE;
+        List<LocalDate> candidateDates = requiresSchedule
+                ? List.of(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2))
+                : null;
+        SaveParticipationRequest.ScheduleResponseRequest scheduleResponse =
+                scheduleInputType == ScheduleInputType.DATE_AND_TIME
+                        && availableStartTime != null
+                        && availableEndTime != null
+                        && availableStartTime.isBefore(availableEndTime)
+                        ? new SaveParticipationRequest.ScheduleResponseRequest(
+                                null,
+                                List.of(new SaveParticipationRequest.ScheduleAvailabilityRequest(
+                                        LocalDate.of(2026, 7, 1),
+                                        availableStartTime,
+                                        availableStartTime.plusHours(2).isAfter(availableEndTime)
+                                                ? availableEndTime
+                                                : availableStartTime.plusHours(2)
+                                ))
+                        )
+                        : null;
+        SaveParticipationRequest.DepartureRequest departure = requiresPlace
+                ? new SaveParticipationRequest.DepartureRequest(
+                        "company",
+                        "Seoul",
+                        BigDecimal.valueOf(37.498095),
+                        BigDecimal.valueOf(127.027610),
+                        com.moyeo.domain.meeting.TransportationMode.PUBLIC_TRANSIT
+                )
+                : null;
+        return new CreateMeetingRequest(
+                name,
+                description,
+                maxParticipants,
+                planningType,
+                scheduleInputType,
+                availableStartTime,
+                availableEndTime,
+                candidateDates,
+                scheduleResponse,
+                departure,
+                deadlineMinutes
+        );
     }
 
     private CreateMeetingRequest defaultCreateMeetingRequest(int maxParticipants) {
-        return new CreateMeetingRequest(
+        return createMeetingRequest(
                 "weekend-meeting",
                 "dinner together",
                 maxParticipants,
@@ -1440,7 +1475,7 @@ class MeetingControllerTest {
     }
 
     private CreateMeetingRequest invalidCreateMeetingRequest() {
-        return new CreateMeetingRequest(
+        return createMeetingRequest(
                 "",
                 "x".repeat(101),
                 1,
@@ -1453,7 +1488,7 @@ class MeetingControllerTest {
     }
 
     private CreateMeetingRequest dateOnlyCreateMeetingRequest() {
-        return new CreateMeetingRequest(
+        return createMeetingRequest(
                 "date-only",
                 "choose available dates",
                 6,
@@ -1463,30 +1498,6 @@ class MeetingControllerTest {
                 null,
                 1440
         );
-    }
-
-    private Map<String, Object> defaultHostParticipationRequest(CreateMeetingRequest request) {
-        Map<String, Object> participation = new HashMap<>();
-        if (request.planningType() == com.moyeo.domain.meeting.PlanningType.SCHEDULE_ONLY
-                || request.planningType() == com.moyeo.domain.meeting.PlanningType.SCHEDULE_AND_PLACE) {
-            participation.put("scheduleCandidateDates", List.of("2026-07-01", "2026-07-02"));
-            if (request.scheduleInputType() == ScheduleInputType.DATE_AND_TIME) {
-                participation.put("scheduleResponse", Map.of(
-                        "availableTimeRanges", List.of(scheduleAvailability("09:00", "11:00"))
-                ));
-            }
-        }
-        if (request.planningType() == com.moyeo.domain.meeting.PlanningType.PLACE_ONLY
-                || request.planningType() == com.moyeo.domain.meeting.PlanningType.SCHEDULE_AND_PLACE) {
-            participation.put("departure", Map.of(
-                    "name", "company",
-                    "address", "Seoul Gangnam",
-                    "latitude", 37.498095,
-                    "longitude", 127.027610,
-                    "transportationMode", "PUBLIC_TRANSIT"
-            ));
-        }
-        return participation;
     }
 
     private void joinGuest(String inviteCode, String nickname) throws Exception {
