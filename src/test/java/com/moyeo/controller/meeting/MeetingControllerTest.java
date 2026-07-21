@@ -1071,6 +1071,15 @@ class MeetingControllerTest {
         assertThat(jsonExamples.path("SCHEDULE_AND_PLACE_DATE_AND_TIME").path("value").has("departure")).isTrue();
         assertThat(jsonExamples.path("SCHEDULE_ONLY_DATE_ONLY").path("value").has("scheduleCandidateDates")).isTrue();
         assertThat(jsonExamples.path("PLACE_ONLY").path("value").has("departure")).isTrue();
+        assertThat(jsonExamples.path("PLACE_ONLY").path("value").path("departure").has("name")).isFalse();
+        assertThat(multipartExamples.path("PLACE_ONLY").path("value").path("request").path("departure").has("name")).isFalse();
+        var departureNameSchema = openApi.path("components").path("schemas").path("DepartureRequest")
+                .path("properties").path("name");
+        assertThat(departureNameSchema.path("type").toString())
+                .contains("string")
+                .contains("null");
+        assertThat(openApi.path("components").path("schemas").path("DepartureRequest").path("required").toString())
+                .doesNotContain("name");
     }
 
     @Test
@@ -1122,6 +1131,8 @@ class MeetingControllerTest {
             assertThat(guestExamples.has(exampleName)).isTrue();
             assertThat(memberExamples.has(exampleName)).isTrue();
         });
+        assertThat(guestExamples.path("PLACE_ONLY").path("value").path("departure").has("name")).isFalse();
+        assertThat(memberExamples.path("PLACE_ONLY").path("value").path("departure").has("name")).isFalse();
     }
 
     @Test

@@ -82,7 +82,13 @@ public record SaveParticipationRequest(
 
     @Schema(description = "참여자 출발지와 이동수단")
     public record DepartureRequest(
-            @Schema(description = "출발지 표시 이름입니다. 선택 입력이며, 생략하면 조회 응답에서는 출발지 주소를 표시합니다.", example = "회사", maxLength = 30, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+            @Schema(
+                    description = "출발지 표시 이름입니다. 선택 입력(nullable)이며, 생략하면 조회 응답에서는 출발지 주소를 표시합니다.",
+                    example = "회사",
+                    maxLength = 30,
+                    requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+                    nullable = true
+            )
             @Size(max = 30)
             String name,
 

@@ -274,7 +274,7 @@ public class MeetingController {
                                                       "planningType": "SCHEDULE_AND_PLACE",
                                                       "scheduleInputType": "DATE_ONLY",
                                                       "scheduleCandidateDates": ["2026-07-10", "2026-07-11"],
-                                                      "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
+                                                      "departure": {"address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                       "deadlineMinutes": 1440
                                                     }
                                                     """
@@ -345,6 +345,9 @@ public class MeetingController {
                                                             **`scheduleInputType`**
                                                             - `PLACE_ONLY`에서는 보내지 않습니다.
 
+                                                            **출발지 표시 이름**
+                                                            - `departure.name`은 선택 입력입니다. 생략하면 장소 현황 응답에서 `departure.address`를 표시합니다.
+
                                                             """,
                                                     value = """
                                                     {
@@ -352,7 +355,7 @@ public class MeetingController {
                                                       "description": "만날 장소를 정해요.",
                                                       "maxParticipants": 8,
                                                       "planningType": "PLACE_ONLY",
-                                                      "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
+                                                      "departure": {"address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                       "deadlineMinutes": 720
                                                     }
                                                     """
@@ -507,6 +510,9 @@ public class MeetingController {
                                                     **`scheduleInputType`**
                                                     - `PLACE_ONLY`에서는 보내지 않습니다.
 
+                                                    **출발지 표시 이름**
+                                                    - `departure.name`은 선택 입력입니다. 생략하면 장소 현황 응답에서 `departure.address`를 표시합니다.
+
                                                     `coverImage`는 선택 파일 파트이며, 사진이 없으면 생략합니다.
                                                     """,
                                             value = """
@@ -516,7 +522,7 @@ public class MeetingController {
                                                         "description": "만날 장소를 정해요.",
                                                         "maxParticipants": 8,
                                                         "planningType": "PLACE_ONLY",
-                                                        "departure": {"name": "회사", "address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
+                                                        "departure": {"address": "서울 강남구 테헤란로 123", "latitude": 37.498095, "longitude": 127.027610, "transportationMode": "PUBLIC_TRANSIT"},
                                                         "deadlineMinutes": 720
                                                       }
                                                     }
@@ -837,13 +843,12 @@ public class MeetingController {
                                     ),
                                     @ExampleObject(
                                             name = "PLACE_ONLY",
-                                            description = "모임 생성의 PLACE_ONLY 예시와 연결됩니다. 출발지만 입력하고 scheduleResponse는 포함하지 않습니다.",
+                                            description = "모임 생성의 PLACE_ONLY 예시와 연결됩니다. 출발지만 입력하고 scheduleResponse는 포함하지 않습니다. departure.name은 선택 입력이며 생략하면 출발지 주소가 표시됩니다.",
                                             value = """
                                             {
                                               "nickname": "민지 친구",
                                               "password": "moyeo2026!",
                                               "departure": {
-                                                "name": "회사",
                                                 "address": "서울 강남구 테헤란로 123",
                                                 "latitude": 37.498095,
                                                 "longitude": 127.027610,
@@ -1032,12 +1037,11 @@ public class MeetingController {
                                     ),
                                     @ExampleObject(
                                             name = "PLACE_ONLY",
-                                            description = "모임 생성의 PLACE_ONLY 예시와 연결됩니다. 출발지만 입력하고 scheduleResponse는 포함하지 않습니다.",
+                                            description = "모임 생성의 PLACE_ONLY 예시와 연결됩니다. 출발지만 입력하고 scheduleResponse는 포함하지 않습니다. departure.name은 선택 입력이며 생략하면 출발지 주소가 표시됩니다.",
                                             value = """
                                             {
                                               "nickname": "민지",
                                               "departure": {
-                                                "name": "집",
                                                 "address": "서울 마포구 월드컵북로 1",
                                                 "latitude": 37.566500,
                                                 "longitude": 126.978000,
