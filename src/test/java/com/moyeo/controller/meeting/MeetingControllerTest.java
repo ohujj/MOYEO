@@ -1042,6 +1042,26 @@ class MeetingControllerTest {
     }
 
     @Test
+    void swaggerDocumentsValidationAndParticipationInputErrorsForMeetingFlows() throws Exception {
+        var openApi = objectMapper.readTree(mockMvc.perform(get("/v3/api-docs"))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString());
+        var paths = openApi.path("paths");
+        List<String> errorContents = List.of(
+                paths.path("/api/meetings").path("post").path("responses").path("400").path("content").toString(),
+                paths.path("/api/meetings/invitations/{inviteCode}/guests").path("post").path("responses").path("400").path("content").toString(),
+                paths.path("/api/meetings/invitations/{inviteCode}/members").path("post").path("responses").path("400").path("content").toString()
+        );
+
+        assertThat(errorContents).allSatisfy(errorContent -> {
+            assertThat(errorContent).contains("COMMON_VALIDATION_FAILED");
+            assertThat(errorContent).contains("INVALID_MEETING_PARTICIPATION_INPUT");
+        });
+    }
+
+    @Test
     void swaggerDocumentsSameFiveFlowsForGuestAndMemberJoinAndNoSeparateHostParticipation() throws Exception {
         List<String> exampleNames = List.of(
                 "SCHEDULE_AND_PLACE_DATE_AND_TIME",

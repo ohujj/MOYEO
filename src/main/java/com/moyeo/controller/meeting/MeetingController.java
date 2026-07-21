@@ -132,13 +132,27 @@ public class MeetingController {
             @ApiResponse(responseCode = "201", description = "모임 생성 성공"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 검증 실패",
-                    content = @Content(examples = @ExampleObject(value = """
-                            {
-                              "code": "COMMON_VALIDATION_FAILED",
-                              "status": 400
-                            }
-                            """))
+                    description = "요청 형식 검증 실패 또는 선택한 모임 플로우와 참여 입력의 불일치",
+                    content = @Content(examples = {
+                            @ExampleObject(
+                                    name = "요청 형식 검증 실패",
+                                    value = """
+                                            {
+                                              "code": "COMMON_VALIDATION_FAILED",
+                                              "status": 400
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "모임 플로우와 참여 입력 불일치",
+                                    value = """
+                                            {
+                                              "code": "INVALID_MEETING_PARTICIPATION_INPUT",
+                                              "status": 400
+                                            }
+                                            """
+                            )
+                    })
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -516,7 +530,30 @@ public class MeetingController {
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "모임 생성 성공"),
-            @ApiResponse(responseCode = "400", description = "request JSON 검증 실패"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "request JSON 형식 검증 실패 또는 선택한 모임 플로우와 방장 참여 입력의 불일치",
+                    content = @Content(examples = {
+                            @ExampleObject(
+                                    name = "요청 형식 검증 실패",
+                                    value = """
+                                            {
+                                              "code": "COMMON_VALIDATION_FAILED",
+                                              "status": 400
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "모임 플로우와 방장 참여 입력 불일치",
+                                    value = """
+                                            {
+                                              "code": "INVALID_MEETING_PARTICIPATION_INPUT",
+                                              "status": 400
+                                            }
+                                            """
+                            )
+                    })
+            ),
             @ApiResponse(responseCode = "413", description = "커버 파일 크기 초과"),
             @ApiResponse(responseCode = "415", description = "JPEG 또는 PNG가 아닌 커버 파일"),
             @ApiResponse(responseCode = "503", description = "커버 이미지 저장소 일시 이용 불가")
@@ -823,13 +860,27 @@ public class MeetingController {
             @ApiResponse(responseCode = "201", description = "게스트 참여 성공"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 검증 실패",
-                    content = @Content(examples = @ExampleObject(value = """
-                            {
-                              "code": "COMMON_VALIDATION_FAILED",
-                              "status": 400
-                            }
-                            """))
+                    description = "요청 형식 검증 실패 또는 모임 설정과 참여 입력의 불일치",
+                    content = @Content(examples = {
+                            @ExampleObject(
+                                    name = "요청 형식 검증 실패",
+                                    value = """
+                                            {
+                                              "code": "COMMON_VALIDATION_FAILED",
+                                              "status": 400
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "모임 설정과 참여 입력 불일치",
+                                    value = """
+                                            {
+                                              "code": "INVALID_MEETING_PARTICIPATION_INPUT",
+                                              "status": 400
+                                            }
+                                            """
+                            )
+                    })
             ),
             @ApiResponse(
                     responseCode = "404",
@@ -1004,13 +1055,27 @@ public class MeetingController {
             @ApiResponse(responseCode = "201", description = "로그인 회원 모임 참여 성공"),
             @ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 검증 실패",
-                    content = @Content(examples = @ExampleObject(value = """
-                            {
-                              "code": "COMMON_VALIDATION_FAILED",
-                              "status": 400
-                            }
-                            """))
+                    description = "요청 형식 검증 실패 또는 모임 설정과 참여 입력의 불일치",
+                    content = @Content(examples = {
+                            @ExampleObject(
+                                    name = "요청 형식 검증 실패",
+                                    value = """
+                                            {
+                                              "code": "COMMON_VALIDATION_FAILED",
+                                              "status": 400
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "모임 설정과 참여 입력 불일치",
+                                    value = """
+                                            {
+                                              "code": "INVALID_MEETING_PARTICIPATION_INPUT",
+                                              "status": 400
+                                            }
+                                            """
+                            )
+                    })
             ),
             @ApiResponse(
                     responseCode = "401",
