@@ -1057,6 +1057,9 @@ class MeetingControllerTest {
                 .path("post")
                 .path("requestBody")
                 .path("content");
+        assertThat(openApi.path("paths").path("/api/meetings").path("post").path("description").asText())
+                .contains("출발지 이름 공통 안내")
+                .contains("departure.name");
 
         var jsonExamples = requestContent.path(MediaType.APPLICATION_JSON_VALUE).path("examples");
         var multipartExamples = requestContent.path(MediaType.MULTIPART_FORM_DATA_VALUE).path("examples");
@@ -1125,6 +1128,12 @@ class MeetingControllerTest {
         var memberExamples = paths.path("/api/meetings/invitations/{inviteCode}/members")
                 .path("post").path("requestBody").path("content")
                 .path(MediaType.APPLICATION_JSON_VALUE).path("examples");
+        assertThat(paths.path("/api/meetings/invitations/{inviteCode}/guests").path("post").path("description").asText())
+                .contains("출발지 이름 공통 안내")
+                .contains("departure.name");
+        assertThat(paths.path("/api/meetings/invitations/{inviteCode}/members").path("post").path("description").asText())
+                .contains("출발지 이름 공통 안내")
+                .contains("departure.name");
         assertThat(guestExamples.size()).isEqualTo(exampleNames.size());
         assertThat(memberExamples.size()).isEqualTo(exampleNames.size());
         assertThat(exampleNames).allSatisfy(exampleName -> {
